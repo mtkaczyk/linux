@@ -119,6 +119,10 @@ config PCI_ATS
 config PCI_DOE
 	bool
 
+config PCI_PCIE_EM
+	tristate "PCIe Enclosure Management (NPEM/_DSM)"
+	select ENCLOSURE_SERVICES
+
 config PCI_ECAM
 	bool
 
