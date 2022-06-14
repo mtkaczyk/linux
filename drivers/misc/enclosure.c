@@ -472,8 +472,8 @@ static const char *const enclosure_type[] = {
 	[ENCLOSURE_COMPONENT_ARRAY_DEVICE] = "array device",
 };
 
-static ssize_t get_component_fault(struct device *cdev,
-				   struct device_attribute *attr, char *buf)
+static ssize_t fault_show(struct device *cdev, struct device_attribute *attr,
+			  char *buf)
 {
 	struct enclosure_device *edev = to_enclosure_device(cdev->parent);
 	struct enclosure_component *ecomp = to_enclosure_component(cdev);
@@ -483,9 +483,8 @@ static ssize_t get_component_fault(struct device *cdev,
 	return sysfs_emit(buf, "%d\n", ecomp->fault);
 }
 
-static ssize_t set_component_fault(struct device *cdev,
-				   struct device_attribute *attr,
-				   const char *buf, size_t count)
+static ssize_t fault_store(struct device *cdev, struct device_attribute *attr,
+			   const char *buf, size_t count)
 {
 	struct enclosure_device *edev = to_enclosure_device(cdev->parent);
 	struct enclosure_component *ecomp = to_enclosure_component(cdev);
@@ -496,8 +495,10 @@ static ssize_t set_component_fault(struct device *cdev,
 	return count;
 }
 
-static ssize_t get_component_status(struct device *cdev,
-				    struct device_attribute *attr,char *buf)
+static DEVICE_ATTR_RW(fault);
+
+static ssize_t status_show(struct device *cdev, struct device_attribute *attr,
+			   char *buf)
 {
 	struct enclosure_device *edev = to_enclosure_device(cdev->parent);
 	struct enclosure_component *ecomp = to_enclosure_component(cdev);
@@ -507,9 +508,8 @@ static ssize_t get_component_status(struct device *cdev,
 	return sysfs_emit(buf, "%s\n", enclosure_status[ecomp->status]);
 }
 
-static ssize_t set_component_status(struct device *cdev,
-				    struct device_attribute *attr,
-				    const char *buf, size_t count)
+static ssize_t status_store(struct device *cdev, struct device_attribute *attr,
+			    const char *buf, size_t count)
 {
 	struct enclosure_device *edev = to_enclosure_device(cdev->parent);
 	struct enclosure_component *ecomp = to_enclosure_component(cdev);
@@ -530,8 +530,10 @@ static ssize_t set_component_status(struct device *cdev,
 		return -EINVAL;
 }
 
-static ssize_t get_component_active(struct device *cdev,
-				    struct device_attribute *attr, char *buf)
+static DEVICE_ATTR_RW(status);
+
+static ssize_t active_show(struct device *cdev, struct device_attribute *attr,
+			   char *buf)
 {
 	struct enclosure_component *ecomp = to_enclosure_component(cdev);
 
@@ -539,9 +541,8 @@ static ssize_t get_component_active(struct device *cdev,
 	return sysfs_emit(buf, "%d\n", ecomp->active);
 }
 
-static ssize_t set_component_active(struct device *cdev,
-				    struct device_attribute *attr,
-				    const char *buf, size_t count)
+static ssize_t active_store(struct device *cdev, struct device_attribute *attr,
+			    const char *buf, size_t count)
 {
 	struct enclosure_device *edev = to_enclosure_device(cdev->parent);
 	struct enclosure_component *ecomp = to_enclosure_component(cdev);
@@ -552,8 +553,10 @@ static ssize_t set_component_active(struct device *cdev,
 	return count;
 }
 
-static ssize_t get_component_locate(struct device *cdev,
-				    struct device_attribute *attr, char *buf)
+static DEVICE_ATTR_RW(active);
+
+static ssize_t locate_show(struct device *cdev, struct device_attribute *attr,
+			   char *buf)
 {
 	struct enclosure_device *edev = to_enclosure_device(cdev->parent);
 	struct enclosure_component *ecomp = to_enclosure_component(cdev);
@@ -563,9 +566,8 @@ static ssize_t get_component_locate(struct device *cdev,
 	return sysfs_emit(buf, "%d\n", ecomp->locate);
 }
 
-static ssize_t set_component_locate(struct device *cdev,
-				    struct device_attribute *attr,
-				    const char *buf, size_t count)
+static ssize_t locate_store(struct device *cdev, struct device_attribute *attr,
+			    const char *buf, size_t count)
 {
 	struct enclosure_device *edev = to_enclosure_device(cdev->parent);
 	struct enclosure_component *ecomp = to_enclosure_component(cdev);
@@ -576,9 +578,10 @@ static ssize_t set_component_locate(struct device *cdev,
 	return count;
 }
 
-static ssize_t get_component_power_status(struct device *cdev,
-					  struct device_attribute *attr,
-					  char *buf)
+static DEVICE_ATTR_RW(locate);
+
+static ssize_t power_status_show(struct device *cdev,
+				 struct device_attribute *attr, char *buf)
 {
 	struct enclosure_device *edev = to_enclosure_device(cdev->parent);
 	struct enclosure_component *ecomp = to_enclosure_component(cdev);
@@ -593,9 +596,9 @@ static ssize_t get_component_power_status(struct device *cdev,
 	return sysfs_emit(buf, "%s\n", ecomp->power_status ? "on" : "off");
 }
 
-static ssize_t set_component_power_status(struct device *cdev,
-					  struct device_attribute *attr,
-					  const char *buf, size_t count)
+static ssize_t power_status_store(struct device *cdev,
+				  struct device_attribute *attr,
+				  const char *buf, size_t count)
 {
 	struct enclosure_device *edev = to_enclosure_device(cdev->parent);
 	struct enclosure_component *ecomp = to_enclosure_component(cdev);
@@ -615,16 +618,20 @@ static ssize_t set_component_power_status(struct device *cdev,
 	return count;
 }
 
-static ssize_t get_component_type(struct device *cdev,
-				  struct device_attribute *attr, char *buf)
+static DEVICE_ATTR_RW(power_status);
+
+static ssize_t type_show(struct device *cdev, struct device_attribute *attr,
+			 char *buf)
 {
 	struct enclosure_component *ecomp = to_enclosure_component(cdev);
 
 	return sysfs_emit(buf, "%s\n", enclosure_type[ecomp->type]);
 }
 
-static ssize_t get_component_slot(struct device *cdev,
-				  struct device_attribute *attr, char *buf)
+static DEVICE_ATTR_RO(type);
+
+static ssize_t slot_show(struct device *cdev, struct device_attribute *attr,
+			 char *buf)
 {
 	struct enclosure_component *ecomp = to_enclosure_component(cdev);
 	int slot;
@@ -638,18 +645,7 @@ static ssize_t get_component_slot(struct device *cdev,
 	return sysfs_emit(buf, "%d\n", slot);
 }
 
-static DEVICE_ATTR(fault, S_IRUGO | S_IWUSR, get_component_fault,
-		    set_component_fault);
-static DEVICE_ATTR(status, S_IRUGO | S_IWUSR, get_component_status,
-		   set_component_status);
-static DEVICE_ATTR(active, S_IRUGO | S_IWUSR, get_component_active,
-		   set_component_active);
-static DEVICE_ATTR(locate, S_IRUGO | S_IWUSR, get_component_locate,
-		   set_component_locate);
-static DEVICE_ATTR(power_status, S_IRUGO | S_IWUSR, get_component_power_status,
-		   set_component_power_status);
-static DEVICE_ATTR(type, S_IRUGO, get_component_type, NULL);
-static DEVICE_ATTR(slot, S_IRUGO, get_component_slot, NULL);
+static DEVICE_ATTR_RO(slot);
 
 static struct attribute *enclosure_component_attrs[] = {
 	&dev_attr_fault.attr,
