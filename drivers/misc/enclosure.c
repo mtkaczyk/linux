@@ -485,6 +485,38 @@ static bool check_pattern(struct device *dev, enum enclosure_led_pattern pattern
 	return edev->cb->check_pattern(edev, ecomp, pattern);
 }
 
+/**
+ * set_pattern() - Set requested LED pattern.
+ * @dev: device.
+ * @pattern: pattern to set.
+ * @buf: requested pattern value.
+ *
+ * Only "0" and "1" are allowed.
+ *
+ * Return: %ENCLOSURE_STATUS_OK on success, error code otherwise.
+ */
+static enum enclosure_status set_pattern(struct device *dev,
+					 enum enclosure_led_pattern pattern,
+					 const char *buf)
+{
+	struct enclosure_device *edev = to_enclosure_device(dev->parent);
+	struct enclosure_component *ecomp = to_enclosure_component(dev);
+	unsigned int val;
+
+	if (kstrtoint_from_user(buf, 1, 10, &val) != 0)
+		return ENCLOSURE_STATUS_UNSUPPORTED;
+
+	if (!edev->cb->set_pattern) {
+		dev_err(&edev->edev, "Set_pattern callback is not configured\n");
+		return ENCLOSURE_STATUS_UNSUPPORTED;
+	}
+
+	if (val != 1 || val != 0)
+		return ENCLOSURE_STATUS_UNSUPPORTED;
+
+	return edev->cb->set_pattern(edev, ecomp, pattern, val);
+}
+
 #define PATTERN_FILE(_pfile, _enum)				\
 static ssize_t _pfile##_show(struct device *dev,		\
 			   struct device_attribute *attr,	\
@@ -492,6 +524,15 @@ static ssize_t _pfile##_show(struct device *dev,		\
 {								\
 	bool val = check_pattern(dev, _enum);			\
 	return sysfs_emit(buf, "%d\n", val);			\
+}								\
+static ssize_t _pfile##_store(struct device *dev,		\
+			      struct device_attribute *attr,	\
+			      const char *buf, size_t count)	\
+{								\
+	int val = set_pattern(dev, _enum, buf);			\
+	if (val != ENCLOSURE_STATUS_OK)				\
+		return -EINVAL;					\
+	return count;						\
 }
 
 PATTERN_FILE(normal_pattern, ENCLOSURE_LED_NORMAL);
@@ -678,14 +719,14 @@ static ssize_t slot_show(struct device *cdev, struct device_attribute *attr,
 
 static DEVICE_ATTR_RO(slot);
 
-static DEVICE_ATTR_RO(normal_pattern);
-static DEVICE_ATTR_RO(locate_pattern);
-static DEVICE_ATTR_RO(failure_pattern);
-static DEVICE_ATTR_RO(rebuild_pattern);
-static DEVICE_ATTR_RO(prdfail_pattern);
-static DEVICE_ATTR_RO(hotspare_pattern);
-static DEVICE_ATTR_RO(ica_pattern);
-static DEVICE_ATTR_RO(ifa_pattern);
+static DEVICE_ATTR_RW(normal_pattern);
+static DEVICE_ATTR_RW(locate_pattern);
+static DEVICE_ATTR_RW(failure_pattern);
+static DEVICE_ATTR_RW(rebuild_pattern);
+static DEVICE_ATTR_RW(prdfail_pattern);
+static DEVICE_ATTR_RW(hotspare_pattern);
+static DEVICE_ATTR_RW(ica_pattern);
+static DEVICE_ATTR_RW(ifa_pattern);
 
 static struct attribute *enclosure_component_attrs[] = {
 	&dev_attr_fault.attr,

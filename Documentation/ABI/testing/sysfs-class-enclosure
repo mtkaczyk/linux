@@ -1,0 +1,13 @@
+What:		/sys/class/enclosure/<enclosure>/<component>/normal_pattern
+What:		/sys/class/enclosure/<enclosure>/<component>/active_pattern
+What:		/sys/class/enclosure/<enclosure>/<component>/locate_pattern
+What:		/sys/class/enclosure/<enclosure>/<component>/failure_pattern
+What:		/sys/class/enclosure/<enclosure>/<component>/rebuild_pattern
+What:		/sys/class/enclosure/<enclosure>/<component>/prdfail_pattern
+What:		/sys/class/enclosure/<enclosure>/<component>/hotspare_pattern
+What:		/sys/class/enclosure/<enclosure>/<component>/ica_pattern
+What:		/sys/class/enclosure/<enclosure>/<component>/ifa_pattern
+Date:		November 2022
+Contact:	Mariusz Tkaczyk <mariusz.tkaczyk@linux.intel.com>
+Description:
+		(RW) Get or set the pattern (1 is on, 0 is off), for a component in an enclosure.
