@@ -472,6 +472,37 @@ static const char *const enclosure_type[] = {
 	[ENCLOSURE_COMPONENT_ARRAY_DEVICE] = "array device",
 };
 
+static bool check_pattern(struct device *dev, enum enclosure_led_pattern pattern)
+{
+	struct enclosure_device *edev = to_enclosure_device(dev->parent);
+	struct enclosure_component *ecomp = to_enclosure_component(dev);
+
+	if (!edev->cb->check_pattern) {
+		dev_err(&edev->edev, "Check_pattern callback is not configured\n");
+		return false;
+	}
+
+	return edev->cb->check_pattern(edev, ecomp, pattern);
+}
+
+#define PATTERN_FILE(_pfile, _enum)				\
+static ssize_t _pfile##_show(struct device *dev,		\
+			   struct device_attribute *attr,	\
+			   char *buf)				\
+{								\
+	bool val = check_pattern(dev, _enum);			\
+	return sysfs_emit(buf, "%d\n", val);			\
+}
+
+PATTERN_FILE(normal_pattern, ENCLOSURE_LED_NORMAL);
+PATTERN_FILE(locate_pattern, ENCLOSURE_LED_LOCATE);
+PATTERN_FILE(failure_pattern, ENCLOSURE_LED_FAILURE);
+PATTERN_FILE(rebuild_pattern, ENCLOSURE_LED_REBUILD);
+PATTERN_FILE(prdfail_pattern, ENCLOSURE_LED_PRDFAIL);
+PATTERN_FILE(hotspare_pattern, ENCLOSURE_LED_HOTSPARE);
+PATTERN_FILE(ica_pattern, ENCLOSURE_LED_ICA);
+PATTERN_FILE(ifa_pattern, ENCLOSURE_LED_IFA);
+
 static ssize_t fault_show(struct device *cdev, struct device_attribute *attr,
 			  char *buf)
 {
@@ -647,6 +678,15 @@ static ssize_t slot_show(struct device *cdev, struct device_attribute *attr,
 
 static DEVICE_ATTR_RO(slot);
 
+static DEVICE_ATTR_RO(normal_pattern);
+static DEVICE_ATTR_RO(locate_pattern);
+static DEVICE_ATTR_RO(failure_pattern);
+static DEVICE_ATTR_RO(rebuild_pattern);
+static DEVICE_ATTR_RO(prdfail_pattern);
+static DEVICE_ATTR_RO(hotspare_pattern);
+static DEVICE_ATTR_RO(ica_pattern);
+static DEVICE_ATTR_RO(ifa_pattern);
+
 static struct attribute *enclosure_component_attrs[] = {
 	&dev_attr_fault.attr,
 	&dev_attr_status.attr,
@@ -655,6 +695,14 @@ static struct attribute *enclosure_component_attrs[] = {
 	&dev_attr_power_status.attr,
 	&dev_attr_type.attr,
 	&dev_attr_slot.attr,
+	&dev_attr_normal_pattern.attr,
+	&dev_attr_locate_pattern.attr,
+	&dev_attr_failure_pattern.attr,
+	&dev_attr_rebuild_pattern.attr,
+	&dev_attr_prdfail_pattern.attr,
+	&dev_attr_hotspare_pattern.attr,
+	&dev_attr_ica_pattern.attr,
+	&dev_attr_ifa_pattern.attr,
 	NULL
 };
 ATTRIBUTE_GROUPS(enclosure_component);
