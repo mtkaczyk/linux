@@ -62,8 +62,6 @@ struct enclosure_component_callbacks {
 	int (*set_fault)(struct enclosure_device *,
 			 struct enclosure_component *,
 			 enum enclosure_component_setting);
-	void (*get_active)(struct enclosure_device *,
-			   struct enclosure_component *);
 	int (*set_active)(struct enclosure_device *,
 			  struct enclosure_component *,
 			  enum enclosure_component_setting);

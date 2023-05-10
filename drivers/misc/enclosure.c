@@ -533,11 +533,9 @@ static ssize_t set_component_status(struct device *cdev,
 static ssize_t get_component_active(struct device *cdev,
 				    struct device_attribute *attr, char *buf)
 {
-	struct enclosure_device *edev = to_enclosure_device(cdev->parent);
 	struct enclosure_component *ecomp = to_enclosure_component(cdev);
 
-	if (edev->cb->get_active)
-		edev->cb->get_active(edev, ecomp);
+	/* The value of ecomp->active may have been updated by edev->cb->set_active(). */
 	return sysfs_emit(buf, "%d\n", ecomp->active);
 }
 
