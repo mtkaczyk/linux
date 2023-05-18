@@ -5,6 +5,7 @@
 config PCIEPORTBUS
 	bool "PCI Express Port Bus support"
 	default y if USB4
+	select PCI_PCIE_EM
 	help
 	  This enables PCI Express Port Bus support. Users can then enable
 	  support for Native Hot-Plug, Advanced Error Reporting, Power
