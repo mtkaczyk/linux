@@ -488,24 +488,21 @@ struct pcie_em_dev *pcie_em_create_dev(struct pci_dev *pdev,
 	struct private *private;
 	int rc = 0;
 
+	pci_info(pdev, "Registering PCIe Enclosure management\n");
+
 	emdev = kzalloc(sizeof(*emdev), GFP_KERNEL);
-	if (!emdev) {
-		rc = -ENOMEM;
+	if (!emdev)
 		goto err;
-	}
+
 	emdev->pdev = pdev;
 
 	emdev->private = get_private(type);
-	if (emdev->private == NULL) {
-		rc = -ENOMEM;
+	if (emdev->private == NULL)
 		goto err;
-	}
 
 	private = emdev->private;
-	if (private->ops->init(emdev)) {
-		rc = -EPERM;
+	if (private->ops->init(emdev))
 		goto err;
-	}
 
 	edev = enclosure_register(&pdev->dev, dev_name(&pdev->dev), 1,
 				  &pcie_em_cb);
@@ -527,6 +524,7 @@ struct pcie_em_dev *pcie_em_create_dev(struct pci_dev *pdev,
 	return emdev;
 err:
 	pcie_em_release_dev(emdev);
+	pci_err(pdev, "Failed to register PCIe Enclosure management\n");
 	return NULL;
 }
 
