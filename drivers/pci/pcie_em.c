@@ -24,16 +24,17 @@
  * NPEM & _DSM use the same state bit definitions
  */
 #define	NPEM_ENABLED	BIT(1)
-#define	NPEM_OK		BIT(2)
-#define	NPEM_LOCATE	BIT(3)
-#define	NPEM_FAILED	BIT(4)
-#define	NPEM_REBUILD	BIT(5)
-#define	NPEM_PFA	BIT(6)
-#define	NPEM_HOTSPARE	BIT(7)
-#define	NPEM_ICA	BIT(8)
-#define	NPEM_IFA	BIT(9)
-#define	NPEM_INVALID	BIT(10)
-#define	NPEM_DISABLED	BIT(11)
+#define	NPEM_RESET	BIT(2)
+#define	NPEM_OK		BIT(3)
+#define	NPEM_LOCATE	BIT(4)
+#define	NPEM_FAILED	BIT(5)
+#define	NPEM_REBUILD	BIT(6)
+#define	NPEM_PFA	BIT(7)
+#define	NPEM_HOTSPARE	BIT(8)
+#define	NPEM_ICA	BIT(9)
+#define	NPEM_IFA	BIT(10)
+#define	NPEM_INVALID	BIT(11)
+#define	NPEM_DISABLED	BIT(12)
 
 /* NPEM Command completed */
 #define	NPEM_CC		BIT(1)
@@ -453,7 +454,7 @@ struct private *get_private(enum pcie_em_type type)
 	struct private *private = kzalloc(sizeof(*private), GFP_KERNEL);
 
 	if (!private)
-		goto err;
+		return NULL;
 
 #ifdef CONFIG_ACPI
 	if (type == PCIE_EM_DSM)
@@ -463,8 +464,10 @@ struct private *get_private(enum pcie_em_type type)
 	if (type == PCIE_EM_NPEM)
 		private->ops = &npem_ops;
 
-err:
-	return NULL;
+	if (!private->ops)
+		return NULL;
+
+	return private;
 }
 
 void pcie_em_release_dev(struct pcie_em_dev *emdev)
@@ -523,8 +526,9 @@ struct pcie_em_dev *pcie_em_create_dev(struct pci_dev *pdev,
 	emdev->edev = edev;
 	return emdev;
 err:
-	pcie_em_release_dev(emdev);
-	pci_err(pdev, "Failed to register PCIe Enclosure management\n");
+	pci_err(pdev, "Failed to register PCIe enclosure management driver\n");
+	if (emdev)
+		pcie_em_release_dev(emdev);
 	return NULL;
 }
 

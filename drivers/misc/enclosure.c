@@ -467,6 +467,18 @@ static const char *const enclosure_status[] = {
 	[ENCLOSURE_STATUS_MAX] = NULL,
 };
 
+static const char *const enclosure_led_pattern[] = {
+	[ENCLOSURE_LED_NORMAL] = "Normal",
+	[ENCLOSURE_LED_LOCATE] = "Locate",
+	[ENCLOSURE_LED_FAILURE] = "Failure",
+	[ENCLOSURE_LED_REBUILD] = "Rebuild",
+	[ENCLOSURE_LED_PRDFAIL] = "Predicted Failure Analysis",
+	[ENCLOSURE_LED_HOTSPARE] = "Hotspare",
+	[ENCLOSURE_LED_ICA] = "In Critical Array",
+	[ENCLOSURE_LED_IFA] = "In Failed Array",
+	[ENCLOSURE_LED_UNKNOWN] = NULL,
+};
+
 static const char *const enclosure_type[] = {
 	[ENCLOSURE_COMPONENT_DEVICE] = "device",
 	[ENCLOSURE_COMPONENT_ARRAY_DEVICE] = "array device",
@@ -489,32 +501,39 @@ static bool check_pattern(struct device *dev, enum enclosure_led_pattern pattern
  * set_pattern() - Set requested LED pattern.
  * @dev: device.
  * @pattern: pattern to set.
- * @buf: requested pattern value.
+ * @ptrn: requested pattern value.
+ * @buf: user input.
+ * @count: user input size.
  *
  * Only "0" and "1" are allowed.
  *
- * Return: %ENCLOSURE_STATUS_OK on success, error code otherwise.
+ * Return: &count on success, -errno otherwise.
  */
-static enum enclosure_status set_pattern(struct device *dev,
-					 enum enclosure_led_pattern pattern,
-					 const char *buf)
+static ssize_t set_pattern(struct device *dev, enum enclosure_led_pattern ptrn,
+			   const char *buf, size_t count)
 {
 	struct enclosure_device *edev = to_enclosure_device(dev->parent);
 	struct enclosure_component *ecomp = to_enclosure_component(dev);
 	unsigned int val;
+	int ret;
 
-	if (kstrtoint_from_user(buf, 1, 10, &val) != 0)
-		return ENCLOSURE_STATUS_UNSUPPORTED;
+	ret = kstrtoint(buf, 10, &val);
 
-	if (!edev->cb->set_pattern) {
-		dev_err(&edev->edev, "Set_pattern callback is not configured\n");
-		return ENCLOSURE_STATUS_UNSUPPORTED;
+	if (ret != 0 || !(val == 1 || val == 0))
+		return -EINVAL;
+
+	if (!edev->cb->set_pattern)
+		return -EPERM;
+
+	ret = edev->cb->set_pattern(edev, ecomp, ptrn, val);
+	if (ret != ENCLOSURE_STATUS_OK) {
+		dev_dbg(&edev->edev, "Cannot turn %s %s pattern: %s returned\n",
+			val == 1 ? "on" : "off", enclosure_led_pattern[ptrn],
+			enclosure_status[ret]);
+		return -EPERM;
 	}
 
-	if (val != 1 || val != 0)
-		return ENCLOSURE_STATUS_UNSUPPORTED;
-
-	return edev->cb->set_pattern(edev, ecomp, pattern, val);
+	return count;
 }
 
 #define PATTERN_FILE(_pfile, _enum)				\
@@ -529,10 +548,7 @@ static ssize_t _pfile##_store(struct device *dev,		\
 			      struct device_attribute *attr,	\
 			      const char *buf, size_t count)	\
 {								\
-	int val = set_pattern(dev, _enum, buf);			\
-	if (val != ENCLOSURE_STATUS_OK)				\
-		return -EINVAL;					\
-	return count;						\
+	return set_pattern(dev, _enum, buf, count);		\
 }
 
 PATTERN_FILE(normal_pattern, ENCLOSURE_LED_NORMAL);
