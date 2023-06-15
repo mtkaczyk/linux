@@ -24,7 +24,6 @@
  * NPEM & _DSM use the same state bit definitions
  */
 #define	NPEM_ENABLED	BIT(0)
-#define	NPEM_RESET	BIT(1)
 #define	NPEM_OK		BIT(2)
 #define	NPEM_LOCATE	BIT(3)
 #define	NPEM_FAILED	BIT(4)
@@ -396,6 +395,9 @@ static bool pcie_em_is_pattern_supported(struct enclosure_device *edev,
 	struct pcie_em_dev *emdev = ecomp->scratch;
 	u32 new_ptrn = to_npem[ptrn];
 
+	if (!IS_BIT_SET(emdev->supported_patterns, NPEM_ENABLED))
+		return false;
+
 	if (IS_BIT_SET(emdev->supported_patterns, new_ptrn))
 		return true;
 	return false;
@@ -414,7 +416,7 @@ static bool pcie_em_check_pattern(struct enclosure_device *edev,
 	if (private->ops->get_patterns(pdev, private, &curr_ptrns) != 0)
 		return false;
 
-	if (IS_BIT_SET(curr_ptrns, new_ptrn | NPEM_ENABLED))
+	if (IS_BIT_SET(curr_ptrns, new_ptrn))
 		return true;
 
 	return false;

@@ -523,9 +523,9 @@ static ssize_t set_pattern(struct device *dev, enum enclosure_led_pattern ptrn,
 	bool val;
 	int ret;
 
-	if (strcmp(buf, PATTERN_OFF) == 0)
+	if (sysfs_streq(buf, PATTERN_OFF) == true)
 		val = false;
-	else if (strcmp(buf, PATTERN_ON) == 0)
+	else if (sysfs_streq(buf, PATTERN_ON) == true)
 		val = true;
 	else
 		return -EINVAL;
