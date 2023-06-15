@@ -107,6 +107,18 @@ struct enclosure_component_callbacks {
 			  enum enclosure_component_setting);
 
 	/**
+	 * is_pattern_supported() - Check if pattern is supported.
+	 * @edev: enclosure device.
+	 * @ecomp: enclosure component.
+	 * @pattern: pattern to check.
+	 *
+	 * Return: True if pattern is supported, false otherwise.
+	 */
+	bool (*is_pattern_supported)(struct enclosure_device *edev,
+				     struct enclosure_component *ecomp,
+				     enum enclosure_led_pattern ptrn);
+
+	/**
 	 * check_pattern() - Check if pattern is set on enclosure component.
 	 * @edev: enclosure device.
 	 * @ecomp: enclosure component.
@@ -116,7 +128,7 @@ struct enclosure_component_callbacks {
 	 */
 	bool (*check_pattern)(struct enclosure_device *edev,
 			      struct enclosure_component *ecomp,
-			      enum enclosure_led_pattern pattern);
+			      enum enclosure_led_pattern ptrn);
 
 	/**
 	 * set_pattern()- Update pattern state on enclosure component.
@@ -132,7 +144,7 @@ struct enclosure_component_callbacks {
 	 */
 	enum enclosure_status (*set_pattern)(struct enclosure_device *edev,
 					     struct enclosure_component *ecomp,
-					     enum enclosure_led_pattern pattern,
+					     enum enclosure_led_pattern ptrn,
 					     bool state);
 	void (*get_power_status)(struct enclosure_device *,
 				 struct enclosure_component *);

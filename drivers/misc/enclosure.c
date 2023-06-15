@@ -484,17 +484,23 @@ static const char *const enclosure_type[] = {
 	[ENCLOSURE_COMPONENT_ARRAY_DEVICE] = "array device",
 };
 
-static bool check_pattern(struct device *dev, enum enclosure_led_pattern pattern)
+#define PATTERN_ON "on"
+#define PATTERN_OFF "off"
+#define PATTERN_NOT_SUPPORTED "not-supported"
+
+static char *check_pattern(struct device *dev,
+			   enum enclosure_led_pattern ptrn)
 {
 	struct enclosure_device *edev = to_enclosure_device(dev->parent);
 	struct enclosure_component *ecomp = to_enclosure_component(dev);
 
-	if (!edev->cb->check_pattern) {
-		dev_err(&edev->edev, "Check_pattern callback is not configured\n");
-		return false;
-	}
+	if (!edev->cb->is_pattern_supported || !edev->cb->check_pattern ||
+	    edev->cb->is_pattern_supported(edev, ecomp, ptrn) == false)
+		return PATTERN_NOT_SUPPORTED;
 
-	return edev->cb->check_pattern(edev, ecomp, pattern);
+	if (edev->cb->check_pattern(edev, ecomp, ptrn) == true)
+		return PATTERN_ON;
+	return PATTERN_OFF;
 }
 
 /**
@@ -505,7 +511,7 @@ static bool check_pattern(struct device *dev, enum enclosure_led_pattern pattern
  * @buf: user input.
  * @count: user input size.
  *
- * Only "0" and "1" are allowed.
+ * Only "on" and "off" are allowed.
  *
  * Return: &count on success, -errno otherwise.
  */
@@ -514,22 +520,25 @@ static ssize_t set_pattern(struct device *dev, enum enclosure_led_pattern ptrn,
 {
 	struct enclosure_device *edev = to_enclosure_device(dev->parent);
 	struct enclosure_component *ecomp = to_enclosure_component(dev);
-	unsigned int val;
+	bool val;
 	int ret;
 
-	ret = kstrtoint(buf, 10, &val);
-
-	if (ret != 0 || !(val == 1 || val == 0))
+	if (strcmp(buf, PATTERN_OFF) == 0)
+		val = false;
+	else if (strcmp(buf, PATTERN_ON) == 0)
+		val = true;
+	else
 		return -EINVAL;
 
-	if (!edev->cb->set_pattern)
-		return -EPERM;
+	if (!edev->cb->is_pattern_supported || !edev->cb->set_pattern ||
+	    edev->cb->is_pattern_supported(edev, ecomp, ptrn) == false)
+		return -EACCES;
 
 	ret = edev->cb->set_pattern(edev, ecomp, ptrn, val);
 	if (ret != ENCLOSURE_STATUS_OK) {
-		dev_dbg(&edev->edev, "Cannot turn %s %s pattern: %s returned\n",
-			val == 1 ? "on" : "off", enclosure_led_pattern[ptrn],
-			enclosure_status[ret]);
+		dev_dbg(&edev->edev, "Cannot turn %s %s pattern: %s error returned\n",
+			val == true ? PATTERN_ON : PATTERN_OFF,
+			enclosure_led_pattern[ptrn], enclosure_status[ret]);
 		return -EPERM;
 	}
 
@@ -541,8 +550,8 @@ static ssize_t _pfile##_show(struct device *dev,		\
 			   struct device_attribute *attr,	\
 			   char *buf)				\
 {								\
-	bool val = check_pattern(dev, _enum);			\
-	return sysfs_emit(buf, "%d\n", val);			\
+	char *val = check_pattern(dev, _enum);			\
+	return sysfs_emit(buf, "%s\n", val);			\
 }								\
 static ssize_t _pfile##_store(struct device *dev,		\
 			      struct device_attribute *attr,	\
