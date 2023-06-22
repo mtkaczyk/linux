@@ -120,8 +120,12 @@ config PCI_DOE
 	bool
 
 config PCI_PCIE_EM
-	tristate "PCIe Enclosure Management (NPEM/_DSM)"
-	select ENCLOSURE_SERVICES
+	bool "Native PCIe Enclosure Management"
+	depends on PCIEPORTBUS && ENCLOSURE_SERVICES
+	default PCIEPORTBUS
+	help
+		Provides support for enclosure LED management using
+		ACPI _DSM and NPEM.
 
 config PCI_ECAM
 	bool
