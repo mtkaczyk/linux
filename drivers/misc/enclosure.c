@@ -472,10 +472,12 @@ static const char *const enclosure_led_pattern[] = {
 	[ENCLOSURE_LED_LOCATE] = "Locate",
 	[ENCLOSURE_LED_FAILURE] = "Failure",
 	[ENCLOSURE_LED_REBUILD] = "Rebuild",
-	[ENCLOSURE_LED_PRDFAIL] = "Predicted Failure Analysis",
+	[ENCLOSURE_LED_PFA] = "Predicted Failure Analysis",
 	[ENCLOSURE_LED_HOTSPARE] = "Hotspare",
 	[ENCLOSURE_LED_ICA] = "In Critical Array",
 	[ENCLOSURE_LED_IFA] = "In Failed Array",
+	[ENCLOSURE_LED_IDT] = "Invalid Device Type",
+	[ENCLOSURE_LED_DISABLED] = "Disabled",
 	[ENCLOSURE_LED_UNKNOWN] = NULL,
 };
 
@@ -558,16 +560,19 @@ static ssize_t _pfile##_store(struct device *dev,		\
 			      const char *buf, size_t count)	\
 {								\
 	return set_pattern(dev, _enum, buf, count);		\
-}
+}								\
+static DEVICE_ATTR_RW(_pfile);
 
 PATTERN_FILE(normal_pattern, ENCLOSURE_LED_NORMAL);
 PATTERN_FILE(locate_pattern, ENCLOSURE_LED_LOCATE);
 PATTERN_FILE(failure_pattern, ENCLOSURE_LED_FAILURE);
 PATTERN_FILE(rebuild_pattern, ENCLOSURE_LED_REBUILD);
-PATTERN_FILE(prdfail_pattern, ENCLOSURE_LED_PRDFAIL);
+PATTERN_FILE(pfa_pattern, ENCLOSURE_LED_PFA);
 PATTERN_FILE(hotspare_pattern, ENCLOSURE_LED_HOTSPARE);
 PATTERN_FILE(ica_pattern, ENCLOSURE_LED_ICA);
 PATTERN_FILE(ifa_pattern, ENCLOSURE_LED_IFA);
+PATTERN_FILE(idt_pattern, ENCLOSURE_LED_ICA);
+PATTERN_FILE(disabled_pattern, ENCLOSURE_LED_IFA);
 
 static ssize_t fault_show(struct device *cdev, struct device_attribute *attr,
 			  char *buf)
@@ -744,15 +749,6 @@ static ssize_t slot_show(struct device *cdev, struct device_attribute *attr,
 
 static DEVICE_ATTR_RO(slot);
 
-static DEVICE_ATTR_RW(normal_pattern);
-static DEVICE_ATTR_RW(locate_pattern);
-static DEVICE_ATTR_RW(failure_pattern);
-static DEVICE_ATTR_RW(rebuild_pattern);
-static DEVICE_ATTR_RW(prdfail_pattern);
-static DEVICE_ATTR_RW(hotspare_pattern);
-static DEVICE_ATTR_RW(ica_pattern);
-static DEVICE_ATTR_RW(ifa_pattern);
-
 static struct attribute *enclosure_component_attrs[] = {
 	&dev_attr_fault.attr,
 	&dev_attr_status.attr,
@@ -765,10 +761,12 @@ static struct attribute *enclosure_component_attrs[] = {
 	&dev_attr_locate_pattern.attr,
 	&dev_attr_failure_pattern.attr,
 	&dev_attr_rebuild_pattern.attr,
-	&dev_attr_prdfail_pattern.attr,
+	&dev_attr_pfa_pattern.attr,
 	&dev_attr_hotspare_pattern.attr,
 	&dev_attr_ica_pattern.attr,
 	&dev_attr_ifa_pattern.attr,
+	&dev_attr_idt_pattern.attr,
+	&dev_attr_disabled_pattern.attr,
 	NULL
 };
 ATTRIBUTE_GROUPS(enclosure_component);

@@ -56,7 +56,7 @@ enum enclosure_component_setting {
  * @ENCLOSURE_LED_FAILURE:	Drive in this slot is failed.
  * @ENCLOSURE_LED_REBUILD:	Drive in slot is under rebuild is a part
  *				of array and is under rebuild.
- * @ENCLOSURE_LED_PRDFAIL:	Predicted Failure Analysis. The drive in this
+ * @ENCLOSURE_LED_PFA:		Predicted Failure Analysis. The drive in this
  *				slot is predicted to fail soon.
  * @ENCLOSURE_LED_HOTSPARE:	This slot has a drive that is marked to be
  *				automatically rebuilt and used as replacement
@@ -65,6 +65,9 @@ enum enclosure_component_setting {
  *				degraded.
  * @ENCLOSURE_LED_IFA:		The array in which this slot is part of is
  *				failed.
+ * @ENCLOSURE_LED_IDT		Invalid Device Type, may mean the drive is not
+ * 				the right type for the connectors.
+ * @ENCLOSURE_LED_DISABLED	The drive in this slot is disabled.
  * @ENCLOSURE_LED_UNKNOWN:	Unknown pattern or led is managed by hardware.
  *
  * Patterns list based on IBPI (SFF-8489) and NPEM (PCIe r6.0.1-1.0 sec6.28)
@@ -77,10 +80,12 @@ enum enclosure_led_pattern {
 	ENCLOSURE_LED_LOCATE,
 	ENCLOSURE_LED_FAILURE,
 	ENCLOSURE_LED_REBUILD,
-	ENCLOSURE_LED_PRDFAIL,
+	ENCLOSURE_LED_PFA,
 	ENCLOSURE_LED_HOTSPARE,
 	ENCLOSURE_LED_ICA,
 	ENCLOSURE_LED_IFA,
+	ENCLOSURE_LED_IDT,
+	ENCLOSURE_LED_DISABLED,
 	ENCLOSURE_LED_UNKNOWN
 };
 
