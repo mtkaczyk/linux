@@ -21,7 +21,8 @@
 #include <linux/pcie_em.h>
 
 /*
- * NPEM & _DSM use the same state bit definitions
+ * NPEM & _DSM use the same state bit definitions.
+ * Note: NPEM_RESET in intentionally omitted, it is not a pattern.
  */
 #define	NPEM_ENABLED	BIT(0)
 #define	NPEM_OK		BIT(2)
@@ -54,25 +55,23 @@ static const u32 to_npem[] = {
 struct private {
 	struct pcie_em_ops *ops;
 	u16 npem_pos;
+	u32 supported_patterns;
 };
 
 struct pcie_em_ops {
 	/**
 	 * init() - initialize PCIe enclosure management.
-	 * Return: 0 on success, ERRNO codes otherwise.
 	 */
 	int (*init)(struct pcie_em_dev *emdev);
 
 	/**
-	 * get_patterns() - Get current patterns.
-	 * Return: 0 on success, ERRNO codes otherwise.
+	 * get_patterns() - Get enabled patterns.
 	 */
 	int (*get_patterns)(struct pci_dev *pdev, struct private *private,
 			     u32 *output);
 
 	/**
-	 * set_patterns() - Activate patterns.
-	 * Return: 0 on success, ERRNO codes otherwise.
+	 * set_patterns() - configure patterns.
 	 */
 	int (*set_patterns)(struct pci_dev *pdev, struct private *private,
 			    u32 val);
@@ -215,12 +214,13 @@ static int set_patterns_dsm(struct pci_dev *pdev, struct private *private,
 static int init_dsm(struct pcie_em_dev *emdev)
 {
 	struct pci_dev *pdev = emdev->pdev;
+	struct private *private = emdev->private;
 
 	if (dsm_get(pdev, GET_SUPPORTED_STATES_DSM,
-		    &emdev->supported_patterns) != 0)
+		    &private->supported_patterns) != 0)
 		return -EPERM;
 
-	if((emdev->supported_patterns & NPEM_ENABLED) == 0)
+	if(IS_BIT_SET(private->supported_patterns, NPEM_ENABLED))
 		return -EPERM;
 
 	return 0;
@@ -260,10 +260,12 @@ static bool pci_has_npem(struct pci_dev *pdev)
 	int pos = pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_NPEM);
 	u32 cap;
 
-	if (pos)
-		if (pci_read_config_dword(pdev, pos + PCI_NPEM_CAP, &cap) == 0)
-			if (IS_BIT_SET(cap, NPEM_ENABLED))
-				return true;
+	if (!pos)
+		return false;
+
+	if (pci_read_config_dword(pdev, pos + PCI_NPEM_CAP, &cap) == 0)
+		if (IS_BIT_SET(cap, NPEM_ENABLED))
+			return true;
 	return false;
 }
 
@@ -368,11 +370,11 @@ static int init_npem(struct pcie_em_dev *emdev)
 		return -EFAULT;
 
 	ret = npem_read_reg(pdev, private, PCI_NPEM_CAP,
-			    &emdev->supported_patterns);
+			    &private->supported_patterns);
 	if (ret != 0)
 		return ret;
 
-	if(!IS_BIT_SET(emdev->supported_patterns,NPEM_ENABLED))
+	if(!IS_BIT_SET(private->supported_patterns, NPEM_ENABLED))
 		return -EPERM;
 
 	return 0;
@@ -393,12 +395,10 @@ static bool pcie_em_is_pattern_supported(struct enclosure_device *edev,
 					 enum enclosure_led_pattern ptrn)
 {
 	struct pcie_em_dev *emdev = ecomp->scratch;
+	struct private *private = emdev->private;
 	u32 new_ptrn = to_npem[ptrn];
 
-	if (!IS_BIT_SET(emdev->supported_patterns, NPEM_ENABLED))
-		return false;
-
-	if (IS_BIT_SET(emdev->supported_patterns, new_ptrn))
+	if (IS_BIT_SET(private->supported_patterns, new_ptrn))
 		return true;
 	return false;
 }
