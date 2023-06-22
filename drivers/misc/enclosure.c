@@ -506,16 +506,7 @@ static char *check_pattern(struct device *dev,
 }
 
 /**
- * set_pattern() - Set requested LED pattern.
- * @dev: device.
- * @pattern: pattern to set.
- * @ptrn: requested pattern value.
- * @buf: user input.
- * @count: user input size.
- *
- * Only "on" and "off" are allowed.
- *
- * Return: &count on success, -errno otherwise.
+ * set_pattern() - Set requested LED pattern. Only "on" and "off" are allowed.
  */
 static ssize_t set_pattern(struct device *dev, enum enclosure_led_pattern ptrn,
 			   const char *buf, size_t count)

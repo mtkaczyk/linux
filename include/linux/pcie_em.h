@@ -24,14 +24,12 @@ enum pcie_em_type {
  * struct pcie_em_dev - PCIe Enclosure Management device.
  * @pdev: PCI device.
  * @edev: enclosure device.
- * @supported_patterns: list of supported states.
- * @npem_pos: position of NPEM ext cap.
+ * @private: Internal properties and callbacks.
  */
 struct pcie_em_dev {
 	struct pci_dev *pdev;
 	struct enclosure_device *edev;
 
-	u32 supported_patterns;
 	void *private;
 };
 

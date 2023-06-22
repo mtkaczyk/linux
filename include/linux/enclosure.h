@@ -124,7 +124,7 @@ struct enclosure_component_callbacks {
 				     enum enclosure_led_pattern ptrn);
 
 	/**
-	 * check_pattern() - Check if pattern is set on enclosure component.
+	 * check_pattern() - Check if pattern is set.
 	 * @edev: enclosure device.
 	 * @ecomp: enclosure component.
 	 * @pattern: pattern to check.
@@ -136,7 +136,7 @@ struct enclosure_component_callbacks {
 			      enum enclosure_led_pattern ptrn);
 
 	/**
-	 * set_pattern()- Update pattern state on enclosure component.
+	 * set_pattern()- Update pattern state.
 	 * @edev: enclosure device.
 	 * @ecomp: enclosure component.
 	 * @pattern: pattern to set.
