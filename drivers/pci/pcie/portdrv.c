@@ -714,11 +714,9 @@ static int pcie_portdrv_probe(struct pci_dev *dev,
 		pm_runtime_put_autosuspend(&dev->dev);
 		pm_runtime_allow(&dev->dev);
 	}
-	if (IS_REACHABLE(CONFIG_PCI_PCIE_EM)) {
-		enum pcie_em_type em_type = get_pcie_enclosure_management(dev);
-		if (em_type != PCIE_EM_NOT_SUPPORTED)
-			dev->encl = pcie_em_create_dev(dev, em_type);
-	}
+	if (IS_REACHABLE(CONFIG_PCI_PCIE_EM))
+		dev->encl = get_pcie_enclosure_management(dev);
+
 	return 0;
 }
 
@@ -729,6 +727,9 @@ static void pcie_portdrv_remove(struct pci_dev *dev)
 		pm_runtime_get_noresume(&dev->dev);
 		pm_runtime_dont_use_autosuspend(&dev->dev);
 	}
+
+	if (IS_REACHABLE(CONFIG_PCI_PCIE_EM) && dev->encl)
+		pcie_em_release_dev(dev->encl);
 
 	pcie_port_device_remove(dev);
 

@@ -14,12 +14,6 @@
 #ifndef DRIVERS_PCI_EM_H
 #define DRIVERS_PCI_EM_H
 
-enum pcie_em_type {
-	PCIE_EM_NOT_SUPPORTED = 0,
-	PCIE_EM_DSM,
-	PCIE_EM_NPEM,
-};
-
 /**
  * struct pcie_em_dev - PCIe Enclosure Management device.
  * @pdev: PCI device.
@@ -33,9 +27,7 @@ struct pcie_em_dev {
 	void *private;
 };
 
-enum pcie_em_type get_pcie_enclosure_management(struct pci_dev *pdev);
-struct pcie_em_dev *pcie_em_create_dev(struct pci_dev *pdev,
-				       enum pcie_em_type type);
+struct pcie_em_dev *get_pcie_enclosure_management(struct pci_dev *pdev);
 void pcie_em_release_dev(struct pcie_em_dev *emdev);
 
 #endif /* DRIVERS_PCI_PCIE_EM_H */

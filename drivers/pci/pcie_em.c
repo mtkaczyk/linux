@@ -52,6 +52,11 @@ static const u32 to_npem[] = {
 	[ENCLOSURE_LED_IFA]	= NPEM_IFA,
 };
 
+enum pcie_em_type {
+	PCIE_EM_DSM,
+	PCIE_EM_NPEM,
+};
+
 struct private {
 	struct pcie_em_ops *ops;
 	u16 npem_pos;
@@ -491,8 +496,8 @@ void pcie_em_release_dev(struct pcie_em_dev *emdev)
 	kfree(emdev);
 }
 
-struct pcie_em_dev *pcie_em_create_dev(struct pci_dev *pdev,
-				       enum pcie_em_type type)
+static struct pcie_em_dev *pcie_em_create_dev(struct pci_dev *pdev,
+					      enum pcie_em_type type)
 {
 	struct pcie_em_dev *emdev;
 	struct enclosure_device *edev;
@@ -541,15 +546,15 @@ err:
 	return NULL;
 }
 
-enum pcie_em_type get_pcie_enclosure_management(struct pci_dev *pdev)
+struct pcie_em_dev *get_pcie_enclosure_management(struct pci_dev *pdev)
 {
 #ifdef CONFIG_ACPI
 	if (pcie_has_dsm(pdev))
-		return PCIE_EM_DSM;
+		return pcie_em_create_dev(pdev, PCIE_EM_DSM);
 #endif /* CONFIG_ACPI */
 	if (pci_has_npem(pdev))
-		return PCIE_EM_NPEM;
-	return PCIE_EM_NOT_SUPPORTED;
+		return pcie_em_create_dev(pdev, PCIE_EM_NPEM);
+	return NULL;
 }
 
 MODULE_LICENSE("GPL");
