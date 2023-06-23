@@ -70,14 +70,12 @@ struct pcie_em_ops {
 	/**
 	 * get_patterns() - Get enabled patterns.
 	 */
-	int (*get_patterns)(struct pci_dev *pdev, struct private *private,
-			     u32 *output);
+	int (*get_patterns)(struct pcie_em_dev *emdev, u32 *output);
 
 	/**
 	 * set_patterns() - configure patterns.
 	 */
-	int (*set_patterns)(struct pci_dev *pdev, struct private *private,
-			    u32 val);
+	int (*set_patterns)(struct pcie_em_dev *emdev, u32 val);
 };
 
 #ifdef CONFIG_ACPI
@@ -202,18 +200,6 @@ static int dsm_get(struct pci_dev *pdev, u64 dsm_func, u32 *output)
 	return 0;
 }
 
-static int get_patterns_dms(struct pci_dev *pdev, struct private *private,
-			    u32 *output)
-{
-	return dsm_get(pdev, GET_STATE_DSM, output);
-}
-
-static int set_patterns_dsm(struct pci_dev *pdev, struct private *private,
-			    u32 output)
-{
-	return dsm_set(pdev, output);
-}
-
 static int init_dsm(struct pcie_em_dev *emdev)
 {
 	struct pci_dev *pdev = emdev->pdev;
@@ -229,12 +215,21 @@ static int init_dsm(struct pcie_em_dev *emdev)
 	return 0;
 }
 
+static int get_patterns_dms(struct pcie_em_dev *emdev, u32 *output)
+{
+	return dsm_get(emdev->pdev, GET_STATE_DSM, output);
+}
+
+static int set_patterns_dsm(struct pcie_em_dev *emdev, u32 output)
+{
+	return dsm_set(emdev->pdev, output);
+}
+
 static struct pcie_em_ops dsm_ops = {
 	.init		= init_dsm,
 	.get_patterns	= get_patterns_dms,
 	.set_patterns	= set_patterns_dsm,
 };
-
 #endif /* CONFIG_ACPI */
 
 static bool pcie_has_dsm(struct pci_dev *pdev)
@@ -272,19 +267,20 @@ static bool pci_has_npem(struct pci_dev *pdev)
 	return false;
 }
 
-static int npem_read_reg(struct pci_dev *pdev, struct private *private,
-				u16 reg, u32 *val)
+static int npem_read_reg(struct pcie_em_dev *emdev, u16 reg, u32 *val)
 {
-	int ret = pci_read_config_dword(pdev, private->npem_pos + reg, val);
+	struct private *private = emdev->private;
+	int pos = private->npem_pos + reg;
+	int ret = pci_read_config_dword(emdev->pdev, pos, val);
 
 	return pcibios_err_to_errno(ret);
 }
 
-static int npem_write_ctrl(struct pci_dev *pdev, struct private *private,
-			   u32 reg)
+static int npem_write_ctrl(struct pcie_em_dev *emdev, u32 reg)
 {
+	struct private *private = emdev->private;
 	int pos = private->npem_pos + PCI_NPEM_CTRL;
-	int ret =  pci_write_config_dword(pdev, pos, reg);
+	int ret =  pci_write_config_dword(emdev->pdev, pos, reg);
 
 	return pcibios_err_to_errno(ret);
 }
@@ -300,15 +296,14 @@ static int npem_write_ctrl(struct pci_dev *pdev, struct private *private,
  * bit, but rather poll under interrupt at a reduced rate; for example at 10 ms
  * intervals.
  */
-static void wait_for_completion_npem(struct pci_dev *pdev,
-				     struct private *private)
+static void wait_for_completion_npem(struct pcie_em_dev *emdev)
 {
 	u32 status;
 	unsigned long wait_end = jiffies + msecs_to_jiffies(1000);
 
 	while (true) {
 		/* Check status only if read is successfull. */
-		if (npem_read_reg(pdev, private, PCI_NPEM_STATUS, &status) == 0)
+		if (npem_read_reg(emdev, PCI_NPEM_STATUS, &status) == 0)
 			if (IS_BIT_SET(status, NPEM_CC))
 				return;
 
@@ -318,36 +313,34 @@ static void wait_for_completion_npem(struct pci_dev *pdev,
 	}
 }
 
-static int set_patterns_npem(struct pci_dev *pdev, struct private *private,
-			     u32 val)
+static int set_patterns_npem(struct pcie_em_dev *emdev, u32 val)
 {
 	u32 status;
 	int ret;
 
-	ret = npem_read_reg(pdev, private, PCI_NPEM_STATUS, &status);
+	ret = npem_read_reg(emdev, PCI_NPEM_STATUS, &status);
 	if (ret != 0)
 		return ret;
 
 	if (!IS_BIT_SET(status, NPEM_CC))
-		wait_for_completion_npem(pdev, private);
+		wait_for_completion_npem(emdev);
 
-	return npem_write_ctrl(pdev, private, val);
+	return npem_write_ctrl(emdev, val);
 }
 
-static int get_patterns_npem(struct pci_dev *pdev, struct private *private,
-			     u32 *output)
+static int get_patterns_npem(struct pcie_em_dev *emdev, u32 *output)
 {
 	u32 status;
 	int ret;
 
-	ret = npem_read_reg(pdev, private, PCI_NPEM_STATUS, &status);
+	ret = npem_read_reg(emdev, PCI_NPEM_STATUS, &status);
 	if (ret != 0)
 		return ret;
 
 	if (IS_BIT_SET(status, NPEM_CC))
-		wait_for_completion_npem(pdev, private);
+		wait_for_completion_npem(emdev);
 
-	ret = npem_read_reg(pdev, private, PCI_NPEM_CTRL, output);
+	ret = npem_read_reg(emdev, PCI_NPEM_CTRL, output);
 	if (ret != 0)
 		return ret;
 
@@ -371,8 +364,7 @@ static int init_npem(struct pcie_em_dev *emdev)
 	if (private->npem_pos == 0)
 		return -EFAULT;
 
-	ret = npem_read_reg(pdev, private, PCI_NPEM_CAP,
-			    &private->supported_patterns);
+	ret = npem_read_reg(emdev, PCI_NPEM_CAP, &private->supported_patterns);
 	if (ret != 0)
 		return ret;
 
@@ -410,12 +402,11 @@ static bool pcie_em_check_pattern(struct enclosure_device *edev,
 				  enum enclosure_led_pattern ptrn)
 {
 	struct pcie_em_dev *emdev = ecomp->scratch;
-	struct pci_dev *pdev = emdev->pdev;
 	struct private *private = emdev->private;
 	u32 new_ptrn = to_npem[ptrn];
 	u32 curr_ptrns;
 
-	if (private->ops->get_patterns(pdev, private, &curr_ptrns) != 0)
+	if (private->ops->get_patterns(emdev, &curr_ptrns) != 0)
 		return false;
 
 	if (IS_BIT_SET(curr_ptrns, new_ptrn))
@@ -430,12 +421,11 @@ static enum enclosure_status pcie_em_set_pattern(struct enclosure_device *edev,
 						 bool state)
 {
 	struct pcie_em_dev *emdev = ecomp->scratch;
-	struct pci_dev *pdev = emdev->pdev;
 	struct private *private = emdev->private;
 	u32 new_ptrn = to_npem[ptrn];
 	u32 curr_ptrns, new_ptrns;
 
-	if (private->ops->get_patterns(pdev, private, &curr_ptrns) != 0)
+	if (private->ops->get_patterns(emdev, &curr_ptrns) != 0)
 		return ENCLOSURE_STATUS_CRITICAL;
 
 	if ((state == true && IS_BIT_SET(curr_ptrns, new_ptrn)) ||
@@ -448,7 +438,7 @@ static enum enclosure_status pcie_em_set_pattern(struct enclosure_device *edev,
 	else
 		new_ptrns = (curr_ptrns & ~new_ptrn) | NPEM_ENABLED;
 
-	if (private->ops->set_patterns(pdev, private, new_ptrns) != 0)
+	if (private->ops->set_patterns(emdev, new_ptrns) != 0)
 		return ENCLOSURE_STATUS_CRITICAL;
 
 	return ENCLOSURE_STATUS_OK;
@@ -510,11 +500,11 @@ static struct pcie_em_dev *pcie_em_create_dev(struct pci_dev *pdev,
 
 	emdev->pdev = pdev;
 
-	emdev->private = get_private(type);
-	if (emdev->private == NULL)
+	private = get_private(type);
+	if (private == NULL)
 		goto err;
+	emdev->private = private;
 
-	private = emdev->private;
 	if (private->ops->init(emdev))
 		goto err;
 
