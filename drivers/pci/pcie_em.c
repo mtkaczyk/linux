@@ -316,9 +316,8 @@ static void wait_for_completion_npem(struct pci_dev *pdev,
 
 		if (time_after(jiffies, wait_end))
 			return;
+		msleep(10);
 	}
-
-	msleep(10);
 }
 
 static int set_patterns_npem(struct pci_dev *pdev, struct private *private,
