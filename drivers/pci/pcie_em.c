@@ -12,8 +12,6 @@
  */
 
 #include <linux/acpi.h>
-#include <linux/module.h>
-#include <linux/mutex.h>
 #include <linux/pci.h>
 #include <linux/enclosure.h>
 #include <linux/delay.h>
@@ -555,5 +553,3 @@ struct pcie_em_dev *get_pcie_enclosure_management(struct pci_dev *pdev)
 		return pcie_em_create_dev(pdev, PCIE_EM_NPEM);
 	return NULL;
 }
-
-MODULE_LICENSE("GPL");

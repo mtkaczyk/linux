@@ -125,7 +125,7 @@ config PCI_PCIE_EM
 	default PCIEPORTBUS
 	help
 		Provides support for enclosure LED management using
-		ACPI _DSM and NPEM.
+		ACPI _DSM or NPEM.
 
 config PCI_ECAM
 	bool
