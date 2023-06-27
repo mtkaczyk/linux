@@ -31,7 +31,7 @@
 #define	NPEM_HOTSPARE	BIT(7)
 #define	NPEM_ICA	BIT(8)
 #define	NPEM_IFA	BIT(9)
-#define	NPEM_INVALID	BIT(10)
+#define	NPEM_IDT	BIT(10)
 #define	NPEM_DISABLED	BIT(11)
 
 /* NPEM Command completed */
@@ -48,6 +48,8 @@ static const u32 to_npem[] = {
 	[ENCLOSURE_LED_HOTSPARE]= NPEM_HOTSPARE,
 	[ENCLOSURE_LED_ICA]	= NPEM_ICA,
 	[ENCLOSURE_LED_IFA]	= NPEM_IFA,
+	[ENCLOSURE_LED_IDT]	= NPEM_IDT,
+	[ENCLOSURE_LED_DISABLED]= NPEM_DISABLED,
 };
 
 enum pcie_em_type {

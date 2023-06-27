@@ -121,8 +121,7 @@ config PCI_DOE
 
 config PCI_PCIE_EM
 	bool "Native PCIe Enclosure Management"
-	depends on PCIEPORTBUS && ENCLOSURE_SERVICES
-	default PCIEPORTBUS
+	depends on ENCLOSURE_SERVICES
 	help
 		Provides support for enclosure LED management using
 		ACPI _DSM or NPEM.
