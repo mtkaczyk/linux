@@ -3,7 +3,7 @@ What:		/sys/class/enclosure/<enclosure>/<component>/active_pattern
 What:		/sys/class/enclosure/<enclosure>/<component>/locate_pattern
 What:		/sys/class/enclosure/<enclosure>/<component>/failure_pattern
 What:		/sys/class/enclosure/<enclosure>/<component>/rebuild_pattern
-What:		/sys/class/enclosure/<enclosure>/<component>/prdfail_pattern
+What:		/sys/class/enclosure/<enclosure>/<component>/pfa_pattern
 What:		/sys/class/enclosure/<enclosure>/<component>/hotspare_pattern
 What:		/sys/class/enclosure/<enclosure>/<component>/ica_pattern
 What:		/sys/class/enclosure/<enclosure>/<component>/ifa_pattern
