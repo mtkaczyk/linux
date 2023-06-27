@@ -251,11 +251,9 @@ static struct pcie_em_ops dsm_ops = {
 	.get_active_patterns	= get_active_patterns_dsm,
 	.set_active_patterns	= set_active_patterns_dsm,
 };
-#endif /* CONFIG_ACPI */
 
 static bool pcie_has_dsm(struct pci_dev *pdev)
 {
-#ifdef CONFIG_ACPI
 	acpi_handle handle;
 	const guid_t pcie_ssd_leds_dsm_guid = PCIE_SSD_LEDS_DSM_GUID;
 
@@ -267,9 +265,9 @@ static bool pcie_has_dsm(struct pci_dev *pdev)
 			   1 << GET_SUPPORTED_STATES_DSM ||
 			   1 << GET_STATE_DSM || 1 << SET_STATE_DSM) == true)
 		return true;
-#endif /* CONFIG_ACPI */
 	return false;
 }
+#endif /* CONFIG_ACPI */
 
 /*
  * NPEM LED control
