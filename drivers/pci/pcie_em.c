@@ -19,7 +19,7 @@
 #include <linux/pcie_em.h>
 
 /*
- * NPEM & _DSM use the same state bit definitions.
+ * NPEM & _DSM use the same state bit definitions expect DISABLED.
  * Note: NPEM_RESET in intentionally omitted, it is not a pattern.
  */
 #define	NPEM_ENABLED	BIT(0)
@@ -58,10 +58,29 @@ enum pcie_em_type {
 };
 
 struct private {
+	enum pcie_em_type type;
 	struct pcie_em_ops *ops;
 	u16 npem_pos;
 	u32 supported_patterns;
 };
+
+/**
+ * get_pattern_bit() - get bit value for pattern.
+ *
+ * Translate enum to bit, handle differences between _DSM and NPEM.
+ *
+ * Return: 0 on error, bit value otherwise.
+ */
+static u32 get_pattern_bit(struct private *private,
+			   enum enclosure_led_pattern ptrn)
+{
+	if (ptrn == ENCLOSURE_LED_UNKNOWN)
+		return 0;
+
+	if (private->type == PCIE_EM_DSM && ptrn == ENCLOSURE_LED_DISABLED)
+		return 0;
+	return to_npem[ptrn];
+}
 
 struct pcie_em_ops {
 	/**
@@ -392,7 +411,10 @@ static bool pcie_em_is_pattern_supported(struct enclosure_device *edev,
 {
 	struct pcie_em_dev *emdev = ecomp->scratch;
 	struct private *private = emdev->private;
-	u32 new_ptrn = to_npem[ptrn];
+	u32 new_ptrn = get_pattern_bit(private, ptrn);
+
+	if (new_ptrn == 0)
+		return false;
 
 	if (IS_BIT_SET(private->supported_patterns, new_ptrn))
 		return true;
@@ -405,8 +427,11 @@ static bool pcie_em_check_pattern(struct enclosure_device *edev,
 {
 	struct pcie_em_dev *emdev = ecomp->scratch;
 	struct private *private = emdev->private;
-	u32 new_ptrn = to_npem[ptrn];
+	u32 new_ptrn = get_pattern_bit(private, ptrn);
 	u32 curr_ptrns;
+
+	if (new_ptrn == 0)
+		return ENCLOSURE_STATUS_UNSUPPORTED;
 
 	if (private->ops->get_patterns(emdev, &curr_ptrns) != 0)
 		return false;
@@ -424,8 +449,11 @@ static enum enclosure_status pcie_em_set_pattern(struct enclosure_device *edev,
 {
 	struct pcie_em_dev *emdev = ecomp->scratch;
 	struct private *private = emdev->private;
-	u32 new_ptrn = to_npem[ptrn];
+	u32 new_ptrn = get_pattern_bit(private, ptrn);
 	u32 curr_ptrns, new_ptrns;
+
+	if (new_ptrn == 0)
+		return ENCLOSURE_STATUS_UNSUPPORTED;
 
 	if (private->ops->get_patterns(emdev, &curr_ptrns) != 0)
 		return ENCLOSURE_STATUS_CRITICAL;
@@ -470,6 +498,7 @@ struct private *get_private(enum pcie_em_type type)
 	if (!private->ops)
 		return NULL;
 
+	private->type = type;
 	return private;
 }
 
