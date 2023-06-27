@@ -89,14 +89,14 @@ struct pcie_em_ops {
 	int (*init)(struct pcie_em_dev *emdev);
 
 	/**
-	 * get_patterns() - Get enabled patterns.
+	 * get_active_patterns() - Get active patterns.
 	 */
-	int (*get_patterns)(struct pcie_em_dev *emdev, u32 *output);
+	int (*get_active_patterns)(struct pcie_em_dev *emdev, u32 *output);
 
 	/**
-	 * set_patterns() - configure patterns.
+	 * set_active_patterns() - configure active patterns.
 	 */
-	int (*set_patterns)(struct pcie_em_dev *emdev, u32 val);
+	int (*set_active_patterns)(struct pcie_em_dev *emdev, u32 val);
 };
 
 #ifdef CONFIG_ACPI
@@ -236,20 +236,20 @@ static int init_dsm(struct pcie_em_dev *emdev)
 	return 0;
 }
 
-static int get_patterns_dms(struct pcie_em_dev *emdev, u32 *output)
+static int get_active_patterns_dsm(struct pcie_em_dev *emdev, u32 *output)
 {
 	return dsm_get(emdev->pdev, GET_STATE_DSM, output);
 }
 
-static int set_patterns_dsm(struct pcie_em_dev *emdev, u32 output)
+static int set_active_patterns_dsm(struct pcie_em_dev *emdev, u32 output)
 {
 	return dsm_set(emdev->pdev, output);
 }
 
 static struct pcie_em_ops dsm_ops = {
 	.init		= init_dsm,
-	.get_patterns	= get_patterns_dms,
-	.set_patterns	= set_patterns_dsm,
+	.get_active_patterns	= get_active_patterns_dsm,
+	.set_active_patterns	= set_active_patterns_dsm,
 };
 #endif /* CONFIG_ACPI */
 
@@ -334,7 +334,7 @@ static void wait_for_completion_npem(struct pcie_em_dev *emdev)
 	}
 }
 
-static int set_patterns_npem(struct pcie_em_dev *emdev, u32 val)
+static int set_active_patterns_npem(struct pcie_em_dev *emdev, u32 val)
 {
 	u32 status;
 	int ret;
@@ -349,7 +349,7 @@ static int set_patterns_npem(struct pcie_em_dev *emdev, u32 val)
 	return npem_write_ctrl(emdev, val);
 }
 
-static int get_patterns_npem(struct pcie_em_dev *emdev, u32 *output)
+static int get_active_patterns_npem(struct pcie_em_dev *emdev, u32 *output)
 {
 	u32 status;
 	int ret;
@@ -397,8 +397,8 @@ static int init_npem(struct pcie_em_dev *emdev)
 
 static struct pcie_em_ops npem_ops = {
 	.init			= init_npem,
-	.get_patterns		= get_patterns_npem,
-	.set_patterns		= set_patterns_npem,
+	.get_active_patterns	= get_active_patterns_npem,
+	.set_active_patterns	= set_active_patterns_npem,
 };
 
 /*
@@ -421,9 +421,9 @@ static bool pcie_em_is_pattern_supported(struct enclosure_device *edev,
 	return false;
 }
 
-static bool pcie_em_check_pattern(struct enclosure_device *edev,
-				  struct enclosure_component *ecomp,
-				  enum enclosure_led_pattern ptrn)
+static bool pcie_em_get_pattern_state(struct enclosure_device *edev,
+				      struct enclosure_component *ecomp,
+				      enum enclosure_led_pattern ptrn)
 {
 	struct pcie_em_dev *emdev = ecomp->scratch;
 	struct private *private = emdev->private;
@@ -433,7 +433,7 @@ static bool pcie_em_check_pattern(struct enclosure_device *edev,
 	if (new_ptrn == 0)
 		return ENCLOSURE_STATUS_UNSUPPORTED;
 
-	if (private->ops->get_patterns(emdev, &curr_ptrns) != 0)
+	if (private->ops->get_active_patterns(emdev, &curr_ptrns) != 0)
 		return false;
 
 	if (IS_BIT_SET(curr_ptrns, new_ptrn))
@@ -442,10 +442,11 @@ static bool pcie_em_check_pattern(struct enclosure_device *edev,
 	return false;
 }
 
-static enum enclosure_status pcie_em_set_pattern(struct enclosure_device *edev,
-						 struct enclosure_component *ecomp,
-						 enum enclosure_led_pattern ptrn,
-						 bool state)
+static enum enclosure_status
+pcie_em_set_pattern_state(struct enclosure_device *edev,
+			  struct enclosure_component *ecomp,
+			  enum enclosure_led_pattern ptrn,
+			  bool state)
 {
 	struct pcie_em_dev *emdev = ecomp->scratch;
 	struct private *private = emdev->private;
@@ -455,7 +456,7 @@ static enum enclosure_status pcie_em_set_pattern(struct enclosure_device *edev,
 	if (new_ptrn == 0)
 		return ENCLOSURE_STATUS_UNSUPPORTED;
 
-	if (private->ops->get_patterns(emdev, &curr_ptrns) != 0)
+	if (private->ops->get_active_patterns(emdev, &curr_ptrns) != 0)
 		return ENCLOSURE_STATUS_CRITICAL;
 
 	if ((state == true && IS_BIT_SET(curr_ptrns, new_ptrn)) ||
@@ -468,16 +469,16 @@ static enum enclosure_status pcie_em_set_pattern(struct enclosure_device *edev,
 	else
 		new_ptrns = (curr_ptrns & ~new_ptrn) | NPEM_ENABLED;
 
-	if (private->ops->set_patterns(emdev, new_ptrns) != 0)
+	if (private->ops->set_active_patterns(emdev, new_ptrns) != 0)
 		return ENCLOSURE_STATUS_CRITICAL;
 
 	return ENCLOSURE_STATUS_OK;
 }
 
 static struct enclosure_component_callbacks pcie_em_cb = {
-	.is_pattern_supported = pcie_em_is_pattern_supported,
-	.check_pattern	= pcie_em_check_pattern,
-	.set_pattern	= pcie_em_set_pattern,
+	.is_pattern_supported	= pcie_em_is_pattern_supported,
+	.get_pattern_state	= pcie_em_get_pattern_state,
+	.set_pattern_state	= pcie_em_set_pattern_state,
 };
 
 struct private *get_private(enum pcie_em_type type)

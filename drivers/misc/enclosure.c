@@ -490,17 +490,28 @@ static const char *const enclosure_type[] = {
 #define PATTERN_OFF "off"
 #define PATTERN_NOT_SUPPORTED "not-supported"
 
-static char *check_pattern(struct device *dev,
+static bool is_pattern_supported(struct device *dev,
+				 enum enclosure_led_pattern ptrn)
+{
+	struct enclosure_device *edev = to_enclosure_device(dev->parent);
+	struct enclosure_component *ecomp = to_enclosure_component(dev);
+
+	if (!edev->cb->is_pattern_supported || !edev->cb->get_pattern_state)
+		return false;
+
+	return edev->cb->is_pattern_supported(edev, ecomp, ptrn);
+}
+
+static char *check_pattern_state(struct device *dev,
 			   enum enclosure_led_pattern ptrn)
 {
 	struct enclosure_device *edev = to_enclosure_device(dev->parent);
 	struct enclosure_component *ecomp = to_enclosure_component(dev);
 
-	if (!edev->cb->is_pattern_supported || !edev->cb->check_pattern ||
-	    edev->cb->is_pattern_supported(edev, ecomp, ptrn) == false)
+	if (is_pattern_supported(dev, ptrn) == false)
 		return PATTERN_NOT_SUPPORTED;
 
-	if (edev->cb->check_pattern(edev, ecomp, ptrn) == true)
+	if (edev->cb->get_pattern_state(edev, ecomp, ptrn) == true)
 		return PATTERN_ON;
 	return PATTERN_OFF;
 }
@@ -508,8 +519,9 @@ static char *check_pattern(struct device *dev,
 /**
  * set_pattern() - Set requested LED pattern. Only "on" and "off" are allowed.
  */
-static ssize_t set_pattern(struct device *dev, enum enclosure_led_pattern ptrn,
-			   const char *buf, size_t count)
+static ssize_t set_pattern_state(struct device *dev,
+				 enum enclosure_led_pattern ptrn,
+				 const char *buf, size_t count)
 {
 	struct enclosure_device *edev = to_enclosure_device(dev->parent);
 	struct enclosure_component *ecomp = to_enclosure_component(dev);
@@ -523,11 +535,10 @@ static ssize_t set_pattern(struct device *dev, enum enclosure_led_pattern ptrn,
 	else
 		return -EINVAL;
 
-	if (!edev->cb->is_pattern_supported || !edev->cb->set_pattern ||
-	    edev->cb->is_pattern_supported(edev, ecomp, ptrn) == false)
+	if (is_pattern_supported(dev, ptrn) == false)
 		return -EACCES;
 
-	ret = edev->cb->set_pattern(edev, ecomp, ptrn, val);
+	ret = edev->cb->set_pattern_state(edev, ecomp, ptrn, val);
 	if (ret != ENCLOSURE_STATUS_OK) {
 		dev_dbg(&edev->edev, "Cannot turn %s %s pattern: %s error returned\n",
 			val == true ? PATTERN_ON : PATTERN_OFF,
@@ -543,14 +554,14 @@ static ssize_t _pfile##_show(struct device *dev,		\
 			   struct device_attribute *attr,	\
 			   char *buf)				\
 {								\
-	char *val = check_pattern(dev, _enum);			\
+	char *val = check_pattern_state(dev, _enum);		\
 	return sysfs_emit(buf, "%s\n", val);			\
 }								\
 static ssize_t _pfile##_store(struct device *dev,		\
 			      struct device_attribute *attr,	\
 			      const char *buf, size_t count)	\
 {								\
-	return set_pattern(dev, _enum, buf, count);		\
+	return set_pattern_state(dev, _enum, buf, count);	\
 }								\
 static DEVICE_ATTR_RW(_pfile);
 
