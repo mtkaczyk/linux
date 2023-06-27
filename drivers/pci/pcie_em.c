@@ -346,6 +346,8 @@ static int set_active_patterns_npem(struct pcie_em_dev *emdev, u32 val)
 	if (!IS_BIT_SET(status, NPEM_CC))
 		wait_for_completion_npem(emdev);
 
+	val = val | NPEM_ENABLED;
+
 	return npem_write_ctrl(emdev, val);
 }
 
@@ -465,9 +467,9 @@ pcie_em_set_pattern_state(struct enclosure_device *edev,
 
 
 	if (state == true)
-		new_ptrns = (curr_ptrns | new_ptrn) | NPEM_ENABLED;
+		new_ptrns = (curr_ptrns | new_ptrn);
 	else
-		new_ptrns = (curr_ptrns & ~new_ptrn) | NPEM_ENABLED;
+		new_ptrns = (curr_ptrns & ~new_ptrn);
 
 	if (private->ops->set_active_patterns(emdev, new_ptrns) != 0)
 		return ENCLOSURE_STATUS_CRITICAL;
