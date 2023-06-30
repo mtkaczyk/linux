@@ -563,7 +563,7 @@ static ssize_t _pfile##_store(struct device *dev,		\
 {								\
 	return set_pattern_state(dev, _enum, buf, count);	\
 }								\
-static DEVICE_ATTR_RW(_pfile);
+static DEVICE_ATTR_RW(_pfile)
 
 PATTERN_FILE(normal_pattern, ENCLOSURE_LED_NORMAL);
 PATTERN_FILE(locate_pattern, ENCLOSURE_LED_LOCATE);

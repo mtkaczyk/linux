@@ -66,7 +66,7 @@ enum enclosure_component_setting {
  * @ENCLOSURE_LED_IFA:		The array in which this slot is part of is
  *				failed.
  * @ENCLOSURE_LED_IDT		Invalid Device Type, may mean the drive is not
- * 				the right type for the connectors.
+ *				the right type for the connectors.
  * @ENCLOSURE_LED_DISABLED	The drive in this slot is disabled.
  * @ENCLOSURE_LED_UNKNOWN:	Unknown pattern or led is managed by hardware.
  *
