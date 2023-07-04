@@ -120,11 +120,13 @@ config PCI_DOE
 	bool
 
 config PCI_PCIE_EM
-	bool "Native PCIe Enclosure Management"
+	bool "Native PCIe and _DSM Enclosure Management"
 	depends on ENCLOSURE_SERVICES
 	help
-		Provides support for enclosure LED management using
-		ACPI _DSM or NPEM.
+		Enclosure Led Management allows to manage LED states
+		for the devices with NPEM or _DSM support. If both
+		available, _DSM has higher priority.
+
 
 config PCI_ECAM
 	bool
