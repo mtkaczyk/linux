@@ -40,16 +40,16 @@
 #define IS_BIT_SET(mask, bit)	((mask & bit) == bit)
 
 static const u32 to_npem[] = {
-	[ENCLOSURE_LED_NORMAL]	= NPEM_OK,
-	[ENCLOSURE_LED_LOCATE]	= NPEM_LOCATE,
-	[ENCLOSURE_LED_FAILURE]	= NPEM_FAILED,
-	[ENCLOSURE_LED_REBUILD]	= NPEM_REBUILD,
-	[ENCLOSURE_LED_PFA]	= NPEM_PFA,
-	[ENCLOSURE_LED_HOTSPARE]= NPEM_HOTSPARE,
-	[ENCLOSURE_LED_ICA]	= NPEM_ICA,
-	[ENCLOSURE_LED_IFA]	= NPEM_IFA,
-	[ENCLOSURE_LED_IDT]	= NPEM_IDT,
-	[ENCLOSURE_LED_DISABLED]= NPEM_DISABLED,
+	[ENCLOSURE_LED_NORMAL]		= NPEM_OK,
+	[ENCLOSURE_LED_LOCATE]		= NPEM_LOCATE,
+	[ENCLOSURE_LED_FAILURE]		= NPEM_FAILED,
+	[ENCLOSURE_LED_REBUILD]		= NPEM_REBUILD,
+	[ENCLOSURE_LED_PFA]		= NPEM_PFA,
+	[ENCLOSURE_LED_HOTSPARE]	= NPEM_HOTSPARE,
+	[ENCLOSURE_LED_ICA]		= NPEM_ICA,
+	[ENCLOSURE_LED_IFA]		= NPEM_IFA,
+	[ENCLOSURE_LED_IDT]		= NPEM_IDT,
+	[ENCLOSURE_LED_DISABLED]	= NPEM_DISABLED,
 };
 
 enum pcie_em_type {
@@ -230,7 +230,7 @@ static int init_dsm(struct pcie_em_dev *emdev)
 		    &private->supported_patterns) != 0)
 		return -EPERM;
 
-	if(IS_BIT_SET(private->supported_patterns, NPEM_ENABLED))
+	if (IS_BIT_SET(private->supported_patterns, NPEM_ENABLED))
 		return -EPERM;
 
 	return 0;
@@ -321,14 +321,15 @@ static void wait_for_completion_npem(struct pcie_em_dev *emdev)
 	unsigned long wait_end = jiffies + msecs_to_jiffies(1000);
 
 	while (true) {
-		/* Check status only if read is successfull. */
+		/* Check status only if read is successful. */
 		if (npem_read_reg(emdev, PCI_NPEM_STATUS, &status) == 0)
 			if (IS_BIT_SET(status, NPEM_CC))
 				return;
 
 		if (time_after(jiffies, wait_end))
 			return;
-		msleep(10);
+
+		usleep_range(10, 15);
 	}
 }
 
@@ -374,7 +375,7 @@ static int get_active_patterns_npem(struct pcie_em_dev *emdev, u32 *output)
  *
  * Check if NPEM capability exists, load supported NPEM capabilities and
  * determine if NPEM is enabled.
-*/
+ */
 static int init_npem(struct pcie_em_dev *emdev)
 {
 	struct pci_dev *pdev = emdev->pdev;
@@ -459,8 +460,7 @@ pcie_em_set_pattern_state(struct enclosure_device *edev,
 	if (private->ops->get_active_patterns(emdev, &curr_ptrns) != 0)
 		return ENCLOSURE_STATUS_CRITICAL;
 
-	if ((state == true && IS_BIT_SET(curr_ptrns, new_ptrn)) ||
-	    (state == false && !IS_BIT_SET(curr_ptrns, new_ptrn)))
+	if (state == IS_BIT_SET(curr_ptrns, new_ptrn))
 		return ENCLOSURE_STATUS_NON_CRITICAL;
 
 
@@ -509,9 +509,8 @@ void pcie_em_release_dev(struct pcie_em_dev *emdev)
 		emdev->edev->scratch = NULL;
 		enclosure_unregister(emdev->edev);
 	}
-	if (emdev->private)
-		kfree(emdev->private);
 
+	kfree(emdev->private);
 	kfree(emdev);
 }
 

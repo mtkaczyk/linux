@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: GPL-2.0
+/* SPDX-License-Identifier: GPL-2.0 */
 /*
  * Native PCIe Enclosure Management
  *	PCie Base Specification r6.0.1-1.0 sec 6.28
