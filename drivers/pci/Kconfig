@@ -127,7 +127,6 @@ config PCI_PCIE_EM
 	  the devices with NPEM or _DSM support. If both available,
 	  _DSM has higher priority.
 
-
 config PCI_ECAM
 	bool
 
