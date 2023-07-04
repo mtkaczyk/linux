@@ -390,7 +390,7 @@ static int init_npem(struct pcie_em_dev *emdev)
 	if (ret != 0)
 		return ret;
 
-	if(!IS_BIT_SET(private->supported_patterns, NPEM_ENABLED))
+	if (!IS_BIT_SET(private->supported_patterns, NPEM_ENABLED))
 		return -EPERM;
 
 	return 0;
