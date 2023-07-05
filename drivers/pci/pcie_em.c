@@ -150,7 +150,8 @@ static int dsm_set(struct pci_dev *pdev, u32 value)
 	arg3[1].buffer.pointer = (u8 *)&value;
 
 	out_obj = acpi_evaluate_dsm_typed(handle, &pcie_pcie_em_dsm_guid,
-				1, SET_STATE_DSM, &arg3[0], ACPI_TYPE_BUFFER);
+					  1, SET_STATE_DSM, &arg3[0],
+					  ACPI_TYPE_BUFFER);
 	if (!out_obj)
 		return -EIO;
 
@@ -435,10 +436,10 @@ pcie_em_set_pattern_state(struct enclosure_device *edev,
 	if (state == IS_BIT_SET(curr_ptrns, new_ptrn))
 		return ENCLOSURE_STATUS_NON_CRITICAL;
 
-	if (state == true)
-		new_ptrns = (curr_ptrns | new_ptrn);
-	else
+	if (state == false)
 		new_ptrns = (curr_ptrns & ~new_ptrn);
+	else
+		new_ptrns = (curr_ptrns | new_ptrn);
 
 	if (private->ops->set_active_patterns(emdev, new_ptrns) != 0)
 		return ENCLOSURE_STATUS_CRITICAL;
@@ -502,7 +503,7 @@ static struct pcie_em_dev *pcie_em_create_dev(struct pci_dev *pdev,
 	emdev->pdev = pdev;
 
 	private = get_private(type);
-	if (private == NULL)
+	if (!private)
 		goto err;
 	emdev->private = private;
 

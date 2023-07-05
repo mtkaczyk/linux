@@ -503,7 +503,7 @@ static bool is_pattern_supported(struct device *dev,
 }
 
 static char *check_pattern_state(struct device *dev,
-			   enum enclosure_led_pattern ptrn)
+				 enum enclosure_led_pattern ptrn)
 {
 	struct enclosure_device *edev = to_enclosure_device(dev->parent);
 	struct enclosure_component *ecomp = to_enclosure_component(dev);
@@ -541,7 +541,7 @@ static ssize_t set_pattern_state(struct device *dev,
 	ret = edev->cb->set_pattern_state(edev, ecomp, ptrn, val);
 	if (ret != ENCLOSURE_STATUS_OK) {
 		dev_dbg(&edev->edev, "Cannot turn %s %s pattern: %s error returned\n",
-			val == true ? PATTERN_ON : PATTERN_OFF,
+			val == false ? PATTERN_OFF : PATTERN_ON,
 			enclosure_led_pattern[ptrn], enclosure_status[ret]);
 		return -EPERM;
 	}

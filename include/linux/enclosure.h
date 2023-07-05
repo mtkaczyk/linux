@@ -132,8 +132,8 @@ struct enclosure_component_callbacks {
 	 * Return: True if pattern is set, false otherwise.
 	 */
 	bool (*get_pattern_state)(struct enclosure_device *edev,
-			      struct enclosure_component *ecomp,
-			      enum enclosure_led_pattern ptrn);
+				  struct enclosure_component *ecomp,
+				  enum enclosure_led_pattern ptrn);
 
 	/**
 	 * set_pattern_state()- Update pattern state.
@@ -147,10 +147,11 @@ struct enclosure_component_callbacks {
 	 *
 	 * Return: %ENCLOSURE_STATUS_OK on success.
 	 */
-	enum enclosure_status (*set_pattern_state)(struct enclosure_device *edev,
-					     struct enclosure_component *ecomp,
-					     enum enclosure_led_pattern ptrn,
-					     bool state);
+	enum enclosure_status
+	(*set_pattern_state)(struct enclosure_device *edev,
+			     struct enclosure_component *ecomp,
+			     enum enclosure_led_pattern ptrn,
+			     bool state);
 	void (*get_power_status)(struct enclosure_device *,
 				 struct enclosure_component *);
 	int (*set_power_status)(struct enclosure_device *,
