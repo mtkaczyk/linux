@@ -19,38 +19,15 @@
 #include <linux/pcie_em.h>
 
 /*
- * NPEM & _DSM use the same state bit definitions.
- * Note: NPEM_RESET in intentionally omitted, it is not a pattern.
+ * Special NPEM & _DSM bits. Not a patterns.
  */
 #define	NPEM_ENABLED	BIT(0)
-#define	NPEM_OK		BIT(2)
-#define	NPEM_LOCATE	BIT(3)
-#define	NPEM_FAILED	BIT(4)
-#define	NPEM_REBUILD	BIT(5)
-#define	NPEM_PFA	BIT(6)
-#define	NPEM_HOTSPARE	BIT(7)
-#define	NPEM_ICA	BIT(8)
-#define	NPEM_IFA	BIT(9)
-#define	NPEM_IDT	BIT(10)
-#define	NPEM_DISABLED	BIT(11)
+#define	NPEM_RESET	BIT(1)
 
 /* NPEM Command completed */
 #define	NPEM_CC		BIT(0)
 
 #define IS_BIT_SET(mask, bit)	((mask & bit) == bit)
-
-static const u32 to_npem[] = {
-	[ENCLOSURE_LED_NORMAL]		= NPEM_OK,
-	[ENCLOSURE_LED_LOCATE]		= NPEM_LOCATE,
-	[ENCLOSURE_LED_FAILURE]		= NPEM_FAILED,
-	[ENCLOSURE_LED_REBUILD]		= NPEM_REBUILD,
-	[ENCLOSURE_LED_PFA]		= NPEM_PFA,
-	[ENCLOSURE_LED_HOTSPARE]	= NPEM_HOTSPARE,
-	[ENCLOSURE_LED_ICA]		= NPEM_ICA,
-	[ENCLOSURE_LED_IFA]		= NPEM_IFA,
-	[ENCLOSURE_LED_IDT]		= NPEM_IDT,
-	[ENCLOSURE_LED_DISABLED]	= NPEM_DISABLED,
-};
 
 enum pcie_em_type {
 	PCIE_EM_DSM,
@@ -212,9 +189,6 @@ static int init_dsm(struct pcie_em_dev *emdev)
 		    &private->supported_patterns) != 0)
 		return -EPERM;
 
-	if (IS_BIT_SET(private->supported_patterns, NPEM_ENABLED))
-		return -EPERM;
-
 	return 0;
 }
 
@@ -372,9 +346,6 @@ static int init_npem(struct pcie_em_dev *emdev)
 	if (ret != 0)
 		return ret;
 
-	if (!IS_BIT_SET(private->supported_patterns, NPEM_ENABLED))
-		return -EPERM;
-
 	return 0;
 }
 
@@ -388,58 +359,40 @@ static struct pcie_em_ops npem_ops = {
  * end of NPEM code
  */
 
-static bool pcie_em_is_pattern_supported(struct enclosure_device *edev,
-					 struct enclosure_component *ecomp,
-					 enum enclosure_led_pattern ptrn)
+static u32 pcie_em_get_supported_patterns(struct enclosure_device *edev,
+					   struct enclosure_component *ecomp)
 {
 	struct pcie_em_dev *emdev = ecomp->scratch;
 	struct private *private = emdev->private;
-	u32 new_ptrn = to_npem[ptrn];
+	u32 ptrns =  private->supported_patterns;
 
-	if (IS_BIT_SET(private->supported_patterns, new_ptrn))
-		return true;
-	return false;
-}
-
-static bool pcie_em_get_pattern_state(struct enclosure_device *edev,
-				      struct enclosure_component *ecomp,
-				      enum enclosure_led_pattern ptrn)
-{
-	struct pcie_em_dev *emdev = ecomp->scratch;
-	struct private *private = emdev->private;
-	u32 new_ptrn = to_npem[ptrn];
-	u32 curr_ptrns;
-
-	if (private->ops->get_active_patterns(emdev, &curr_ptrns) != 0)
-		return false;
-
-	if (IS_BIT_SET(curr_ptrns, new_ptrn))
-		return true;
-
-	return false;
+	/* Hide special ENABLED and RESET, present them as not allowed */
+	//ptrns = ptrns & ~(NPEM_ENABLED | NPEM_RESET);
+	return ptrns;
 }
 
 static enum enclosure_status
-pcie_em_set_pattern_state(struct enclosure_device *edev,
-			  struct enclosure_component *ecomp,
-			  enum enclosure_led_pattern ptrn,
-			  bool state)
+pcie_em_get_active_patterns(struct enclosure_device *edev,
+			    struct enclosure_component *ecomp, u32 *ptrns)
 {
 	struct pcie_em_dev *emdev = ecomp->scratch;
 	struct private *private = emdev->private;
-	u32 new_ptrn = to_npem[ptrn];
-	u32 curr_ptrns, new_ptrns;
+
+	return private->ops->get_active_patterns(emdev, ptrns);
+}
+static enum enclosure_status
+pcie_em_set_active_patterns(struct enclosure_device *edev,
+		     struct enclosure_component *ecomp, u32 new_ptrns)
+{
+	struct pcie_em_dev *emdev = ecomp->scratch;
+	struct private *private = emdev->private;
+	u32 curr_ptrns;
 
 	if (private->ops->get_active_patterns(emdev, &curr_ptrns) != 0)
 		return ENCLOSURE_STATUS_CRITICAL;
 
-	if (state == IS_BIT_SET(curr_ptrns, new_ptrn))
+	if (curr_ptrns == new_ptrns)
 		return ENCLOSURE_STATUS_NON_CRITICAL;
-
-	if (state == false)
-		new_ptrns = (curr_ptrns & ~new_ptrn);
-	else
-		new_ptrns = (curr_ptrns | new_ptrn);
 
 	if (private->ops->set_active_patterns(emdev, new_ptrns) != 0)
 		return ENCLOSURE_STATUS_CRITICAL;
@@ -448,9 +401,9 @@ pcie_em_set_pattern_state(struct enclosure_device *edev,
 }
 
 static struct enclosure_component_callbacks pcie_em_cb = {
-	.is_pattern_supported	= pcie_em_is_pattern_supported,
-	.get_pattern_state	= pcie_em_get_pattern_state,
-	.set_pattern_state	= pcie_em_set_pattern_state,
+	.get_supported_patterns	= pcie_em_get_supported_patterns,
+	.get_active_patterns	= pcie_em_get_active_patterns,
+	.set_active_patterns	= pcie_em_set_active_patterns,
 };
 
 struct private *get_private(enum pcie_em_type type)

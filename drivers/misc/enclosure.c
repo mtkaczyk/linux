@@ -467,114 +467,80 @@ static const char *const enclosure_status[] = {
 	[ENCLOSURE_STATUS_MAX] = NULL,
 };
 
-static const char *const enclosure_led_pattern[] = {
-	[ENCLOSURE_LED_NORMAL] = "Normal",
-	[ENCLOSURE_LED_LOCATE] = "Locate",
-	[ENCLOSURE_LED_FAILURE] = "Failure",
-	[ENCLOSURE_LED_REBUILD] = "Rebuild",
-	[ENCLOSURE_LED_PFA] = "Predicted Failure Analysis",
-	[ENCLOSURE_LED_HOTSPARE] = "Hotspare",
-	[ENCLOSURE_LED_ICA] = "In Critical Array",
-	[ENCLOSURE_LED_IFA] = "In Failed Array",
-	[ENCLOSURE_LED_IDT] = "Invalid Device Type",
-	[ENCLOSURE_LED_DISABLED] = "Disabled",
-	[ENCLOSURE_LED_UNKNOWN] = NULL,
-};
-
 static const char *const enclosure_type[] = {
 	[ENCLOSURE_COMPONENT_DEVICE] = "device",
 	[ENCLOSURE_COMPONENT_ARRAY_DEVICE] = "array device",
 };
 
-#define PATTERN_ON "on"
-#define PATTERN_OFF "off"
-#define PATTERN_NOT_SUPPORTED "not-supported"
-
-static bool is_pattern_supported(struct device *dev,
-				 enum enclosure_led_pattern ptrn)
+static ssize_t active_patterns_store(struct device *dev,
+				     struct device_attribute *attr,
+				     const char *buf, size_t count)
 {
 	struct enclosure_device *edev = to_enclosure_device(dev->parent);
 	struct enclosure_component *ecomp = to_enclosure_component(dev);
+	u32 supported_ptrns, new_ptrns;
+	unsigned int val;
+	enum enclosure_status ret;
 
-	if (!edev->cb->is_pattern_supported || !edev->cb->get_pattern_state)
-		return false;
 
-	return edev->cb->is_pattern_supported(edev, ecomp, ptrn);
-}
-
-static char *check_pattern_state(struct device *dev,
-				 enum enclosure_led_pattern ptrn)
-{
-	struct enclosure_device *edev = to_enclosure_device(dev->parent);
-	struct enclosure_component *ecomp = to_enclosure_component(dev);
-
-	if (is_pattern_supported(dev, ptrn) == false)
-		return PATTERN_NOT_SUPPORTED;
-
-	if (edev->cb->get_pattern_state(edev, ecomp, ptrn) == true)
-		return PATTERN_ON;
-	return PATTERN_OFF;
-}
-
-/**
- * set_pattern() - Set requested LED pattern. Only "on" and "off" are allowed.
- */
-static ssize_t set_pattern_state(struct device *dev,
-				 enum enclosure_led_pattern ptrn,
-				 const char *buf, size_t count)
-{
-	struct enclosure_device *edev = to_enclosure_device(dev->parent);
-	struct enclosure_component *ecomp = to_enclosure_component(dev);
-	bool val;
-	int ret;
-
-	if (sysfs_streq(buf, PATTERN_OFF) == true)
-		val = false;
-	else if (sysfs_streq(buf, PATTERN_ON) == true)
-		val = true;
-	else
+	if (kstrtouint(buf, 16, &val) != 0)
 		return -EINVAL;
 
-	if (is_pattern_supported(dev, ptrn) == false)
+	new_ptrns = (u32) val;
+
+	if(!edev->cb->get_supported_patterns)
 		return -EACCES;
 
-	ret = edev->cb->set_pattern_state(edev, ecomp, ptrn, val);
-	if (ret != ENCLOSURE_STATUS_OK) {
-		dev_dbg(&edev->edev, "Cannot turn %s %s pattern: %s error returned\n",
-			val == false ? PATTERN_OFF : PATTERN_ON,
-			enclosure_led_pattern[ptrn], enclosure_status[ret]);
-		return -EPERM;
-	}
+	supported_ptrns = edev->cb->get_supported_patterns(edev, ecomp);
 
-	return count;
+	/* Set if requested bits are supported */
+	if ((new_ptrns & supported_ptrns) != new_ptrns)
+		return -EPERM;
+
+	ret = edev->cb->set_active_patterns(edev, ecomp, new_ptrns);
+
+	if (ret != ENCLOSURE_STATUS_OK) {
+		dev_dbg(&edev->edev,
+			"Cannot set active_patterns: %s error returned\n",
+			enclosure_status[ret]);
+		return -EFAULT;
+	}
+	return 0;
 }
 
-#define PATTERN_FILE(_pfile, _enum)				\
-static ssize_t _pfile##_show(struct device *dev,		\
-			   struct device_attribute *attr,	\
-			   char *buf)				\
-{								\
-	char *val = check_pattern_state(dev, _enum);		\
-	return sysfs_emit(buf, "%s\n", val);			\
-}								\
-static ssize_t _pfile##_store(struct device *dev,		\
-			      struct device_attribute *attr,	\
-			      const char *buf, size_t count)	\
-{								\
-	return set_pattern_state(dev, _enum, buf, count);	\
-}								\
-static DEVICE_ATTR_RW(_pfile)
+static ssize_t active_patterns_show(struct device *dev,
+				    struct device_attribute *attr, char *buf)
+{
+	struct enclosure_device *edev = to_enclosure_device(dev->parent);
+	struct enclosure_component *ecomp = to_enclosure_component(dev);
+	u32 ptrns = 0;
+	enum enclosure_status ret = ENCLOSURE_STATUS_OK;
 
-PATTERN_FILE(normal_pattern, ENCLOSURE_LED_NORMAL);
-PATTERN_FILE(locate_pattern, ENCLOSURE_LED_LOCATE);
-PATTERN_FILE(failure_pattern, ENCLOSURE_LED_FAILURE);
-PATTERN_FILE(rebuild_pattern, ENCLOSURE_LED_REBUILD);
-PATTERN_FILE(pfa_pattern, ENCLOSURE_LED_PFA);
-PATTERN_FILE(hotspare_pattern, ENCLOSURE_LED_HOTSPARE);
-PATTERN_FILE(ica_pattern, ENCLOSURE_LED_ICA);
-PATTERN_FILE(ifa_pattern, ENCLOSURE_LED_IFA);
-PATTERN_FILE(idt_pattern, ENCLOSURE_LED_ICA);
-PATTERN_FILE(disabled_pattern, ENCLOSURE_LED_IFA);
+	if(edev->cb->get_active_patterns)
+		ret = edev->cb->get_active_patterns(edev, ecomp, &ptrns);
+
+	if (ret != ENCLOSURE_STATUS_OK)
+		dev_dbg(&edev->edev,
+			"Cannot get active_patterns: %s error returned\n",
+			enclosure_status[ret]);
+
+	return sysfs_emit(buf, "%x\n", ptrns);
+}
+static DEVICE_ATTR_RW(active_patterns);
+
+static ssize_t supported_patterns_show(struct device *dev,
+				       struct device_attribute *attr, char *buf)
+{
+	struct enclosure_device *edev = to_enclosure_device(dev->parent);
+	struct enclosure_component *ecomp = to_enclosure_component(dev);
+	u32 ptrns = 0;
+
+	if(!edev->cb->get_supported_patterns)
+		ptrns = edev->cb->get_supported_patterns(edev, ecomp);
+
+	return sysfs_emit(buf, "%u\n", ptrns);
+}
+static DEVICE_ATTR_RO(supported_patterns);
 
 static ssize_t fault_show(struct device *cdev, struct device_attribute *attr,
 			  char *buf)
@@ -759,16 +725,8 @@ static struct attribute *enclosure_component_attrs[] = {
 	&dev_attr_power_status.attr,
 	&dev_attr_type.attr,
 	&dev_attr_slot.attr,
-	&dev_attr_normal_pattern.attr,
-	&dev_attr_locate_pattern.attr,
-	&dev_attr_failure_pattern.attr,
-	&dev_attr_rebuild_pattern.attr,
-	&dev_attr_pfa_pattern.attr,
-	&dev_attr_hotspare_pattern.attr,
-	&dev_attr_ica_pattern.attr,
-	&dev_attr_ifa_pattern.attr,
-	&dev_attr_idt_pattern.attr,
-	&dev_attr_disabled_pattern.attr,
+	&dev_attr_supported_patterns.attr,
+	&dev_attr_active_patterns.attr,
 	NULL
 };
 ATTRIBUTE_GROUPS(enclosure_component);

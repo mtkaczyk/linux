@@ -49,46 +49,6 @@ enum enclosure_component_setting {
 	ENCLOSURE_SETTING_BLINK_B_OFF_ON = 7,
 };
 
-/**
- * enum enclosure_led_pattern - Supported patterns list.
- * @ENCLOSURE_LED_NORMAL:	Drive is functioning normally.
- * @ENCLOSURE_LED_LOCATE:	Identify the drive.
- * @ENCLOSURE_LED_FAILURE:	Drive in this slot is failed.
- * @ENCLOSURE_LED_REBUILD:	Drive in slot is under rebuild is a part
- *				of array and is under rebuild.
- * @ENCLOSURE_LED_PFA:		Predicted Failure Analysis. The drive in this
- *				slot is predicted to fail soon.
- * @ENCLOSURE_LED_HOTSPARE:	This slot has a drive that is marked to be
- *				automatically rebuilt and used as replacement
- *				for failed drive.
- * @ENCLOSURE_LED_ICA:		The array in which this slot is part of is
- *				degraded.
- * @ENCLOSURE_LED_IFA:		The array in which this slot is part of is
- *				failed.
- * @ENCLOSURE_LED_IDT		Invalid Device Type, may mean the drive is not
- *				the right type for the connectors.
- * @ENCLOSURE_LED_DISABLED	The drive in this slot is disabled.
- * @ENCLOSURE_LED_UNKNOWN:	Unknown pattern or led is managed by hardware.
- *
- * Patterns list based on IBPI (SFF-8489) and NPEM (PCIe r6.0.1-1.0 sec6.28)
- * Enclosure may not support all patterns and particular patterns may not be
- * mutally exclusive. The interpretation of the pattern depends on the driver
- * and/or a hardware.
- */
-enum enclosure_led_pattern {
-	ENCLOSURE_LED_NORMAL = 0,
-	ENCLOSURE_LED_LOCATE,
-	ENCLOSURE_LED_FAILURE,
-	ENCLOSURE_LED_REBUILD,
-	ENCLOSURE_LED_PFA,
-	ENCLOSURE_LED_HOTSPARE,
-	ENCLOSURE_LED_ICA,
-	ENCLOSURE_LED_IFA,
-	ENCLOSURE_LED_IDT,
-	ENCLOSURE_LED_DISABLED,
-	ENCLOSURE_LED_UNKNOWN
-};
-
 struct enclosure_device;
 struct enclosure_component;
 struct enclosure_component_callbacks {
@@ -111,47 +71,19 @@ struct enclosure_component_callbacks {
 			  struct enclosure_component *,
 			  enum enclosure_component_setting);
 
-	/**
-	 * is_pattern_supported() - Check if pattern is supported.
-	 * @edev: enclosure device.
-	 * @ecomp: enclosure component.
-	 * @pattern: pattern to check.
-	 *
-	 * Return: True if pattern is supported, false otherwise.
-	 */
-	bool (*is_pattern_supported)(struct enclosure_device *edev,
-				     struct enclosure_component *ecomp,
-				     enum enclosure_led_pattern ptrn);
+	u32 (*get_supported_patterns)(struct enclosure_device *edev,
+				      struct enclosure_component *ecomp);
 
-	/**
-	 * check_pattern_state() - Check if pattern is set.
-	 * @edev: enclosure device.
-	 * @ecomp: enclosure component.
-	 * @pattern: pattern to check.
-	 *
-	 * Return: True if pattern is set, false otherwise.
-	 */
-	bool (*get_pattern_state)(struct enclosure_device *edev,
-				  struct enclosure_component *ecomp,
-				  enum enclosure_led_pattern ptrn);
-
-	/**
-	 * set_pattern_state()- Update pattern state.
-	 * @edev: enclosure device.
-	 * @ecomp: enclosure component.
-	 * @pattern: pattern to set.
-	 * @state: state to set.
-	 *
-	 * Disable or enable pattern on enclosure component. It depends on
-	 * enclosure if previously enabled pattern is cleared.
-	 *
-	 * Return: %ENCLOSURE_STATUS_OK on success.
-	 */
 	enum enclosure_status
-	(*set_pattern_state)(struct enclosure_device *edev,
-			     struct enclosure_component *ecomp,
-			     enum enclosure_led_pattern ptrn,
-			     bool state);
+	(*get_active_patterns)(struct enclosure_device *edev,
+			       struct enclosure_component *ecomp,
+			       u32 *ptrns);
+
+	enum enclosure_status
+	(*set_active_patterns)(struct enclosure_device *edev,
+			       struct enclosure_component *ecomp,
+			       u32 new_ptrns);
+
 	void (*get_power_status)(struct enclosure_device *,
 				 struct enclosure_component *);
 	int (*set_power_status)(struct enclosure_device *,
