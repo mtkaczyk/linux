@@ -482,7 +482,6 @@ static ssize_t active_patterns_store(struct device *dev,
 	unsigned int val;
 	enum enclosure_status ret;
 
-
 	if (kstrtouint(buf, 16, &val) != 0)
 		return -EINVAL;
 
@@ -505,7 +504,7 @@ static ssize_t active_patterns_store(struct device *dev,
 			enclosure_status[ret]);
 		return -EFAULT;
 	}
-	return 0;
+	return count;
 }
 
 static ssize_t active_patterns_show(struct device *dev,
@@ -519,10 +518,9 @@ static ssize_t active_patterns_show(struct device *dev,
 	if(edev->cb->get_active_patterns)
 		ret = edev->cb->get_active_patterns(edev, ecomp, &ptrns);
 
-	if (ret != ENCLOSURE_STATUS_OK)
+	if (ret != 0)
 		dev_dbg(&edev->edev,
-			"Cannot get active_patterns: %s error returned\n",
-			enclosure_status[ret]);
+			"Cannot get active_patterns: %d error returned\n", ret);
 
 	return sysfs_emit(buf, "%x\n", ptrns);
 }
@@ -535,10 +533,10 @@ static ssize_t supported_patterns_show(struct device *dev,
 	struct enclosure_component *ecomp = to_enclosure_component(dev);
 	u32 ptrns = 0;
 
-	if(!edev->cb->get_supported_patterns)
+	if(edev->cb->get_supported_patterns)
 		ptrns = edev->cb->get_supported_patterns(edev, ecomp);
 
-	return sysfs_emit(buf, "%u\n", ptrns);
+	return sysfs_emit(buf, "%x\n", ptrns);
 }
 static DEVICE_ATTR_RO(supported_patterns);
 

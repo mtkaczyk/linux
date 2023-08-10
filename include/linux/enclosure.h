@@ -74,10 +74,9 @@ struct enclosure_component_callbacks {
 	u32 (*get_supported_patterns)(struct enclosure_device *edev,
 				      struct enclosure_component *ecomp);
 
-	enum enclosure_status
-	(*get_active_patterns)(struct enclosure_device *edev,
-			       struct enclosure_component *ecomp,
-			       u32 *ptrns);
+	int (*get_active_patterns)(struct enclosure_device *edev,
+				   struct enclosure_component *ecomp,
+				   u32 *ptrns);
 
 	enum enclosure_status
 	(*set_active_patterns)(struct enclosure_device *edev,

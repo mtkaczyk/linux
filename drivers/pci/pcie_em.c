@@ -330,22 +330,28 @@ static int get_active_patterns_npem(struct pcie_em_dev *emdev, u32 *output)
  * @emdev: pcie_em device.
  *
  * Check if NPEM capability exists, load supported NPEM capabilities and
- * determine if NPEM is enabled.
+ * determine if NPEM is enabled. Return error if not.
  */
 static int init_npem(struct pcie_em_dev *emdev)
 {
 	struct pci_dev *pdev = emdev->pdev;
 	struct private *private = emdev->private;
+	u32 ptrns;
 	int ret;
 
 	private->npem_pos = pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_NPEM);
 	if (private->npem_pos == 0)
 		return -EFAULT;
 
-	ret = npem_read_reg(emdev, PCI_NPEM_CAP, &private->supported_patterns);
+	ret = npem_read_reg(emdev, PCI_NPEM_CAP, &ptrns);
 	if (ret != 0)
 		return ret;
 
+	/* Don't register device if NPEM is not enabled */
+	if (!(ptrns & NPEM_ENABLED))
+		return -EPERM;
+
+	private->supported_patterns = ptrns & ~(NPEM_ENABLED | NPEM_RESET);
 	return 0;
 }
 
@@ -364,16 +370,13 @@ static u32 pcie_em_get_supported_patterns(struct enclosure_device *edev,
 {
 	struct pcie_em_dev *emdev = ecomp->scratch;
 	struct private *private = emdev->private;
-	u32 ptrns =  private->supported_patterns;
 
-	/* Hide special ENABLED and RESET, present them as not allowed */
-	//ptrns = ptrns & ~(NPEM_ENABLED | NPEM_RESET);
-	return ptrns;
+	return private->supported_patterns;
 }
 
-static enum enclosure_status
-pcie_em_get_active_patterns(struct enclosure_device *edev,
-			    struct enclosure_component *ecomp, u32 *ptrns)
+static int pcie_em_get_active_patterns(struct enclosure_device *edev,
+				       struct enclosure_component *ecomp,
+				       u32 *ptrns)
 {
 	struct pcie_em_dev *emdev = ecomp->scratch;
 	struct private *private = emdev->private;
