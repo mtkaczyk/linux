@@ -322,6 +322,7 @@ static int get_active_patterns_npem(struct pcie_em_dev *emdev, u32 *output)
 	if (ret != 0)
 		return ret;
 
+	*output = *output & ~(NPEM_ENABLED | NPEM_RESET);
 	return 0;
 }
 
