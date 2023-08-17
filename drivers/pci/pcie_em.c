@@ -29,11 +29,6 @@
 
 #define IS_BIT_SET(mask, bit)	((mask & bit) == bit)
 
-enum pcie_em_type {
-	PCIE_EM_DSM,
-	PCIE_EM_NPEM,
-};
-
 struct private {
 	struct pcie_em_ops *ops;
 	u16 npem_pos;
@@ -57,177 +52,6 @@ struct pcie_em_ops {
 	int (*set_active_patterns)(struct pcie_em_dev *emdev, u32 val);
 };
 
-#ifdef CONFIG_ACPI
-/*
- * _DSM LED control
- */
-
-struct pcie_em_dsm_output {
-	u16 status;
-	u8 function_specific_err;
-	u8 vendor_specific_err;
-	u32 state;
-};
-
-static void dsm_status_err_print(struct pci_dev *pdev,
-				 struct pcie_em_dsm_output *output)
-{
-	switch (output->status) {
-	case 0:
-		break;
-	case 1:
-		pci_dbg(pdev, "_DSM not supported\n");
-		break;
-	case 2:
-		pci_dbg(pdev, "_DSM invalid input parameters\n");
-		break;
-	case 3:
-		pci_dbg(pdev, "_DSM communication error\n");
-		break;
-	case 4:
-		pci_dbg(pdev, "_DSM function-specific error 0x%x\n",
-			output->function_specific_err);
-		break;
-	case 5:
-		pci_dbg(pdev, "_DSM vendor-specific error 0x%x\n",
-			output->vendor_specific_err);
-		break;
-	default:
-		pci_dbg(pdev, "_DSM returned unknown status 0x%x\n",
-			output->status);
-	}
-}
-
-#define PCIE_SSD_LEDS_DSM_GUID						\
-	GUID_INIT(0x5d524d9d, 0xfff9, 0x4d4b,				\
-		  0x8c, 0xb7, 0x74, 0x7e, 0xd5, 0x1e, 0x19, 0x4d)
-
-static const guid_t pcie_pcie_em_dsm_guid = PCIE_SSD_LEDS_DSM_GUID;
-
-#define GET_SUPPORTED_STATES_DSM	0x01
-#define GET_STATE_DSM			0x02
-#define SET_STATE_DSM			0x03
-
-static int dsm_set(struct pci_dev *pdev, u32 value)
-{
-	acpi_handle handle;
-	union acpi_object *out_obj, arg3[2];
-	struct pcie_em_dsm_output *dsm_output;
-
-	handle = ACPI_HANDLE(&pdev->dev);
-	if (!handle)
-		return -ENODEV;
-
-	arg3[0].type = ACPI_TYPE_PACKAGE;
-	arg3[0].package.count = 1;
-	arg3[0].package.elements = &arg3[1];
-
-	arg3[1].type = ACPI_TYPE_BUFFER;
-	arg3[1].buffer.length = 4;
-	arg3[1].buffer.pointer = (u8 *)&value;
-
-	out_obj = acpi_evaluate_dsm_typed(handle, &pcie_pcie_em_dsm_guid,
-					  1, SET_STATE_DSM, &arg3[0],
-					  ACPI_TYPE_BUFFER);
-	if (!out_obj)
-		return -EIO;
-
-	if (out_obj->buffer.length < 8) {
-		ACPI_FREE(out_obj);
-		return -EIO;
-	}
-
-	dsm_output = (struct pcie_em_dsm_output *)out_obj->buffer.pointer;
-
-	if (dsm_output->status != 0) {
-		dsm_status_err_print(pdev, dsm_output);
-		ACPI_FREE(out_obj);
-		return -EIO;
-	}
-	ACPI_FREE(out_obj);
-	return 0;
-}
-
-static int dsm_get(struct pci_dev *pdev, u64 dsm_func, u32 *output)
-{
-	acpi_handle handle;
-	union acpi_object *out_obj;
-	struct pcie_em_dsm_output *dsm_output;
-
-	handle = ACPI_HANDLE(&pdev->dev);
-	if (!handle)
-		return -ENODEV;
-
-	out_obj = acpi_evaluate_dsm_typed(handle, &pcie_pcie_em_dsm_guid, 0x1,
-					  dsm_func, NULL, ACPI_TYPE_BUFFER);
-	if (!out_obj)
-		return -EIO;
-
-	if (out_obj->buffer.length < 8) {
-		ACPI_FREE(out_obj);
-		return -EIO;
-	}
-
-	dsm_output = (struct pcie_em_dsm_output *)out_obj->buffer.pointer;
-	if (dsm_output->status != 0) {
-		dsm_status_err_print(pdev, dsm_output);
-		ACPI_FREE(out_obj);
-		return -EIO;
-	}
-
-	*output = dsm_output->state;
-	ACPI_FREE(out_obj);
-	return 0;
-}
-
-static int init_dsm(struct pcie_em_dev *emdev)
-{
-	struct pci_dev *pdev = emdev->pdev;
-	struct private *private = emdev->private;
-
-	if (dsm_get(pdev, GET_SUPPORTED_STATES_DSM,
-		    &private->supported_patterns) != 0)
-		return -EPERM;
-
-	return 0;
-}
-
-static int get_active_patterns_dsm(struct pcie_em_dev *emdev, u32 *output)
-{
-	return dsm_get(emdev->pdev, GET_STATE_DSM, output);
-}
-
-static int set_active_patterns_dsm(struct pcie_em_dev *emdev, u32 output)
-{
-	return dsm_set(emdev->pdev, output);
-}
-
-static struct pcie_em_ops dsm_ops = {
-	.init		= init_dsm,
-	.get_active_patterns	= get_active_patterns_dsm,
-	.set_active_patterns	= set_active_patterns_dsm,
-};
-
-static bool pcie_has_dsm(struct pci_dev *pdev)
-{
-	acpi_handle handle;
-	const guid_t pcie_ssd_leds_dsm_guid = PCIE_SSD_LEDS_DSM_GUID;
-
-	handle = ACPI_HANDLE(&pdev->dev);
-	if (!handle)
-		return false;
-
-	if (acpi_check_dsm(handle, &pcie_ssd_leds_dsm_guid, 0x1,
-			   1 << GET_SUPPORTED_STATES_DSM ||
-			   1 << GET_STATE_DSM || 1 << SET_STATE_DSM) == true)
-		return true;
-	return false;
-}
-#endif /* CONFIG_ACPI */
-
-/*
- * NPEM LED control
- */
 static bool pci_has_npem(struct pci_dev *pdev)
 {
 	int pos = pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_NPEM);
@@ -410,26 +234,6 @@ static struct enclosure_component_callbacks pcie_em_cb = {
 	.set_active_patterns	= pcie_em_set_active_patterns,
 };
 
-struct private *get_private(enum pcie_em_type type)
-{
-	struct private *private = kzalloc(sizeof(*private), GFP_KERNEL);
-
-	if (!private)
-		return NULL;
-
-#ifdef CONFIG_ACPI
-	if (type == PCIE_EM_DSM)
-		private->ops = &dsm_ops;
-#endif /* CONFIG_ACPI */
-
-	if (type == PCIE_EM_NPEM)
-		private->ops = &npem_ops;
-
-	if (!private->ops)
-		return NULL;
-
-	return private;
-}
 
 void pcie_em_release_dev(struct pcie_em_dev *emdev)
 {
@@ -442,8 +246,7 @@ void pcie_em_release_dev(struct pcie_em_dev *emdev)
 	kfree(emdev);
 }
 
-static struct pcie_em_dev *pcie_em_create_dev(struct pci_dev *pdev,
-					      enum pcie_em_type type)
+static struct pcie_em_dev *pcie_em_create_dev(struct pci_dev *pdev)
 {
 	struct pcie_em_dev *emdev;
 	struct enclosure_device *edev;
@@ -459,9 +262,11 @@ static struct pcie_em_dev *pcie_em_create_dev(struct pci_dev *pdev,
 
 	emdev->pdev = pdev;
 
-	private = get_private(type);
+	private = kzalloc(sizeof(*private), GFP_KERNEL);
 	if (!private)
 		goto err;
+
+	private->ops = &npem_ops;
 	emdev->private = private;
 
 	if (private->ops->init(emdev))
@@ -494,11 +299,7 @@ err:
 
 struct pcie_em_dev *get_pcie_enclosure_management(struct pci_dev *pdev)
 {
-#ifdef CONFIG_ACPI
-	if (pcie_has_dsm(pdev))
-		return pcie_em_create_dev(pdev, PCIE_EM_DSM);
-#endif /* CONFIG_ACPI */
 	if (pci_has_npem(pdev))
-		return pcie_em_create_dev(pdev, PCIE_EM_NPEM);
+		return pcie_em_create_dev(pdev);
 	return NULL;
 }

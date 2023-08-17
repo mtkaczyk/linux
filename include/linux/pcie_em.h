@@ -2,11 +2,7 @@
 /*
  * Native PCIe Enclosure Management
  *	PCie Base Specification r6.0.1-1.0 sec 6.28
- * _DSM Definitions for PCIe SSD Status LED
- *	PCI Firmware Specification Rev 3.3 sec 4.7
  *
- * Copyright (c) 2022 Dell Inc.
- *	Stuart Hayes <stuart.w.hayes@gmail.com>
  * Copyright (c) 2022 Intel Corporation
  *	Mariusz Tkaczyk <mariusz.tkaczyk@linux.intel.com>
  */
