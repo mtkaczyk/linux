@@ -146,3 +146,10 @@ config PCIE_EDR
 	  the PCI Firmware Specification r3.2.  Enable this if you want to
 	  support hybrid DPC model which uses both firmware and OS to
 	  implement DPC.
+
+config PCIE_NPEM
+	bool "Native PCIe Enclosure Management"
+	depends on ENCLOSURE_SERVICES
+	help
+	  This option adds support for Native PCIe Enclosure Management.
+	  It allows to manage LEDs blinking patterns in enclosures.

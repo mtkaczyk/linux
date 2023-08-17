@@ -12,7 +12,6 @@
 #include <linux/pci.h>
 #include <linux/kernel.h>
 #include <linux/errno.h>
-#include <linux/pcie_em.h>
 #include <linux/pm.h>
 #include <linux/pm_runtime.h>
 #include <linux/string.h>
@@ -714,8 +713,6 @@ static int pcie_portdrv_probe(struct pci_dev *dev,
 		pm_runtime_put_autosuspend(&dev->dev);
 		pm_runtime_allow(&dev->dev);
 	}
-	if (IS_REACHABLE(CONFIG_PCI_PCIE_EM))
-		dev->encl = get_pcie_enclosure_management(dev);
 
 	return 0;
 }
@@ -727,9 +724,6 @@ static void pcie_portdrv_remove(struct pci_dev *dev)
 		pm_runtime_get_noresume(&dev->dev);
 		pm_runtime_dont_use_autosuspend(&dev->dev);
 	}
-
-	if (IS_REACHABLE(CONFIG_PCI_PCIE_EM) && dev->encl)
-		pcie_em_release_dev(dev->encl);
 
 	pcie_port_device_remove(dev);
 
