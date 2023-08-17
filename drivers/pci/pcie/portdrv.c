@@ -273,6 +273,11 @@ static int get_port_device_capability(struct pci_dev *dev)
 			services |= PCIE_PORT_SERVICE_BWNOTIF;
 	}
 
+	if (pci_pcie_type(dev) == PCI_EXP_TYPE_DOWNSTREAM) {
+		if (pci_find_ext_capability(dev, PCI_EXT_CAP_ID_NPEM))
+			services |= PCIE_PORT_SERVICE_NPEM;
+	}
+
 	return services;
 }
 
@@ -828,6 +833,7 @@ static void __init pcie_init_services(void)
 	pcie_pme_init();
 	pcie_dpc_init();
 	pcie_hp_init();
+	pcie_npem_init();
 }
 
 static int __init pcie_portdrv_init(void)

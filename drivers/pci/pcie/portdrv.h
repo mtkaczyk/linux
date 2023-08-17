@@ -23,7 +23,7 @@
 #define PCIE_PORT_SERVICE_BWNOTIF_SHIFT	4	/* Bandwidth notification */
 #define PCIE_PORT_SERVICE_BWNOTIF	(1 << PCIE_PORT_SERVICE_BWNOTIF_SHIFT)
 #define PCIE_PORT_SERVICE_NPEM_SHIFT	5	/* Enclosure Management */
-#define PCIE_PORT_SERVICE_NPEM	(	1 << PCIE_PORT_SERVICE_NPEM_SHIFT)
+#define PCIE_PORT_SERVICE_NPEM		(1 << PCIE_PORT_SERVICE_NPEM_SHIFT)
 
 #define PCIE_PORT_DEVICE_MAXSERVICES   6
 
@@ -53,6 +53,12 @@ static inline int pcie_pme_init(void) { return 0; }
 int pcie_dpc_init(void);
 #else
 static inline int pcie_dpc_init(void) { return 0; }
+#endif
+
+#ifdef CONFIG_PCIE_NPEM
+int pcie_npem_init(void);
+#else
+static inline int pcie__npem_init(void) { return 0; }
 #endif
 
 /* Port Type */
