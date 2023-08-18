@@ -6,4 +6,4 @@ Contact:	Mariusz Tkaczyk <mariusz.tkaczyk@linux.intel.com>
 Description:
 		Pattern oriented enclosure management implementation. Each bit represents one
 		pattern, but definition on every bit belongs to the standard used. Currently
-		only NPEM is supported. Only enabled bits can be enabled.
+		only NPEM is supported. Only supported bits can be enabled.
