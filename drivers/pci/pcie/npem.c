@@ -31,14 +31,6 @@
 
 #define IS_BIT_SET(mask, bit)	((mask & bit) == bit)
 
-struct npem_device {
-	struct pci_dev *pdev;
-	struct enclosure_device *edev;
-
-	u16 pos;
-	u32 supported_patterns;
-};
-
 static int npem_read_reg(struct npem_device *npem, u16 reg, u32 *val)
 {
 	int pos = npem->pos + reg;
@@ -121,35 +113,6 @@ static int get_active_patterns_npem(struct npem_device *npem, u32 *output)
 	return 0;
 }
 
-/**
- * init_npem() - initialize Native PCIe enclosure management.
- * @emdev: pcie_em device.
- *
- * Check if NPEM capability exists, load supported NPEM capabilities and
- * determine if NPEM is enabled. Return error if not.
- */
-static int init_npem(struct npem_device *npem)
-{
-	struct pci_dev *pdev = npem->pdev;
-	u32 ptrns;
-	int ret;
-
-	npem->pos = pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_NPEM);
-	if (npem->pos == 0)
-		return -EFAULT;
-
-	ret = npem_read_reg(npem, PCI_NPEM_CAP, &ptrns);
-	if (ret != 0)
-		return ret;
-
-	/* Don't register device if NPEM is not enabled */
-	if (!(ptrns & NPEM_ENABLED))
-		return -EPERM;
-
-	npem->supported_patterns = ptrns & ~(NPEM_ENABLED | NPEM_RESET);
-	return 0;
-}
-
 static u32 npem_get_supported_patterns(struct enclosure_device *edev,
 				       struct enclosure_component *ecomp)
 {
@@ -185,31 +148,59 @@ npem_set_active_patterns(struct enclosure_device *edev,
 	return ENCLOSURE_STATUS_OK;
 }
 
-static struct enclosure_component_callbacks pcie_em_cb = {
+static struct enclosure_component_callbacks npem_cb = {
 	.get_supported_patterns	= npem_get_supported_patterns,
 	.get_active_patterns	= npem_get_active_patterns,
 	.set_active_patterns	= npem_set_active_patterns,
 };
 
-static struct npem_device *npem_create_dev(struct pci_dev *pdev)
+void pcie_npem_destroy(struct pci_dev *pdev)
+{
+	struct npem_device *npem = pdev->npem;
+
+	if (!npem)
+		return;
+
+	if (npem->edev) {
+		npem->edev->scratch = NULL;
+		enclosure_unregister(npem->edev);
+	}
+
+	kfree(npem);
+}
+
+void pcie_npem_init(struct pci_dev *pdev)
 {
 	struct npem_device *npem;
 	struct enclosure_device *edev;
 	struct enclosure_component *ecomp;
-	int rc = 0;
+	int pos;
+	u32 cap;
+
+	if (pci_pcie_type(pdev) != PCI_EXP_TYPE_DOWNSTREAM)
+		return;
+
+	pos = pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_NPEM);
+	if (pos == 0)
+		return;
+
+	if( pci_read_config_dword(pdev, pos + PCI_NPEM_CAP, &cap) != 0 ||
+	    (cap & NPEM_ENABLED) == 0)
+		goto err;
+
+	/* Don't register device if NPEM is not enabled */
+	if (!(cap & NPEM_ENABLED))
+		goto err;
 
 	npem = kzalloc(sizeof(*npem), GFP_KERNEL);
 	if (!npem)
 		goto err;
 
-	npem->pdev = pdev;
-
-	if (init_npem(npem))
-		goto err;
+	npem->supported_patterns = cap & ~(NPEM_ENABLED | NPEM_RESET);
 
 	edev = enclosure_register(&pdev->dev, dev_name(&pdev->dev), 1,
-				  &pcie_em_cb);
-	if (!edev)
+				  &npem_cb);
+	if (IS_ERR(edev))
 		goto err;
 
 	ecomp = enclosure_component_alloc(edev, 0, ENCLOSURE_COMPONENT_DEVICE,
@@ -218,64 +209,15 @@ static struct npem_device *npem_create_dev(struct pci_dev *pdev)
 		goto err;
 
 	ecomp->type = ENCLOSURE_COMPONENT_ARRAY_DEVICE;
-	rc = enclosure_component_register(ecomp);
-	if (rc < 0)
+
+	if (enclosure_component_register(ecomp) < 0)
 		goto err;
 
 	ecomp->scratch = npem;
 	npem->edev = edev;
-	return npem;
-err:
-	pci_err(pdev, "Failed to register PCIe enclosure management driver\n");
-	return NULL;
-}
-
-int npem_probe(struct pcie_device *dev)
-{
-	struct pci_dev *pdev = dev->port;
-	int pos = pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_NPEM);
-	u32 cap;
-	int ret;
-
-	if (!pos)
-		return -ENXIO;
-
-	ret = pci_read_config_dword(pdev, pos + PCI_NPEM_CAP, &cap);
-	if (ret != 0)
-		return ret;
-
-	if ((cap & NPEM_ENABLED) == 0)
-		return -EPERM;
-
-	if (!npem_create_dev(pdev))
-		return -ENXIO;
-
-	return 0;
-}
-
-void npem_remove(struct pcie_device *dev)
-{
+	npem->pdev = pdev;
+	pdev->npem = npem;
 	return;
-	//struct pci_dev *pdev = dev->pdev;
-
-	//if (emdev->edev) {
-	//	emdev->edev->scratch = NULL;
-	//	enclosure_unregister(emdev->edev);
-	//}
-
-	//kfree(emdev->private);
-	//kfree(emdev);
-}
-
-static struct pcie_port_service_driver npemdriver = {
-	.name		= "npem",
-	.port_type	= PCIE_ANY_PORT,
-	.service	= PCIE_PORT_SERVICE_NPEM,
-	.probe		= npem_probe,
-	.remove		= npem_remove,
-};
-
-int __init pcie_npem_init(void)
-{
-	return pcie_port_service_register(&npemdriver);
+err:
+	pci_err(pdev, "Failed to register Native PCIe enclosure management driver\n");
 }

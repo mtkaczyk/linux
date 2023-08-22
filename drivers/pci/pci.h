@@ -321,6 +321,21 @@ static inline void pci_doe_destroy(struct pci_dev *pdev) { }
 static inline void pci_doe_disconnected(struct pci_dev *pdev) { }
 #endif
 
+#ifdef CONFIG_PCIE_NPEM
+struct npem_device {
+	struct pci_dev *pdev;
+	struct enclosure_device *edev;
+
+	u16 pos;
+	u32 supported_patterns;
+};
+void pcie_npem_init(struct pci_dev *pdev);
+void pcie_npem_destroy(struct pci_dev *pdev);
+#else
+static inline void pcie_npem_init(struct pci_dev *pdev) { }
+static inline void pcie_npem_destroy(struct pci_dev *pdev) { }
+#endif
+
 /**
  * pci_dev_set_io_state - Set the new error state if possible.
  *
