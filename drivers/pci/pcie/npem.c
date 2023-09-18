@@ -14,7 +14,6 @@
 #include <linux/acpi.h>
 #include <linux/pci.h>
 #include <linux/pci_regs.h>
-#include <linux/enclosure.h>
 #include <linux/delay.h>
 
 #include "../pci.h"
@@ -93,7 +92,7 @@ static int set_active_patterns_npem(struct npem_device *npem, u32 val)
 	return npem_write_ctrl(npem, val);
 }
 
-static int get_active_patterns_npem(struct npem_device *npem, u32 *output)
+static int npem_get_active_patterns(struct npem_device *npem, u32 *output)
 {
 	u32 status;
 	int ret;
@@ -113,25 +112,12 @@ static int get_active_patterns_npem(struct npem_device *npem, u32 *output)
 	return 0;
 }
 
-static u32 npem_get_supported_patterns(struct enclosure_device *edev,
-				       struct enclosure_component *ecomp)
+static u32 npem_get_supported_patterns(struct npem_device *npem)
 {
-	struct npem_device *npem = ecomp->scratch;
-
 	return npem->supported_patterns;
 }
 
-static int npem_get_active_patterns(struct enclosure_device *edev,
-				    struct enclosure_component *ecomp,
-				    u32 *ptrns)
-{
-	struct npem_device *npem = ecomp->scratch;
-
-	return get_active_patterns_npem(npem, ptrns);
-}
-static enum enclosure_status
-npem_set_active_patterns(struct enclosure_device *edev,
-			 struct enclosure_component *ecomp, u32 new_ptrns)
+static int npem_set_active_patterns(struct npem_device *npem, u32 new_ptrns)
 {
 	struct npem_device *npem = ecomp->scratch;
 	u32 curr_ptrns;
@@ -148,25 +134,84 @@ npem_set_active_patterns(struct enclosure_device *edev,
 	return ENCLOSURE_STATUS_OK;
 }
 
-static struct enclosure_component_callbacks npem_cb = {
-	.get_supported_patterns	= npem_get_supported_patterns,
-	.get_active_patterns	= npem_get_active_patterns,
-	.set_active_patterns	= npem_set_active_patterns,
+static ssize_t active_patterns_store(struct device *dev,
+				     struct device_attribute *attr,
+				     const char *buf, size_t count)
+{
+	u32 supported_ptrns, new_ptrns;
+	unsigned int val;
+	int ret;
+
+	if (kstrtouint(buf, 16, &val) != 0)
+		return -EINVAL;
+
+	new_ptrns = (u32) val;
+
+	if(!edev->cb->get_supported_patterns)
+		return -EACCES;
+
+	supported_ptrns = npem_get_supported_patterns(edev, ecomp);
+
+	/* Set if requested bits are supported */
+	if ((new_ptrns & supported_ptrns) != new_ptrns)
+		return -EPERM;
+
+	ret = edev->cb->set_active_patterns(edev, ecomp, new_ptrns);
+
+	if (ret != ENCLOSURE_STATUS_OK) {
+		dev_dbg(&edev->edev,
+			"Cannot set active_patterns: %s error returned\n",
+			enclosure_status[ret]);
+		return -EFAULT;
+	}
+	return count;
+}
+
+static ssize_t active_patterns_show(struct device *dev,
+				    struct device_attribute *attr, char *buf)
+{
+	struct enclosure_device *edev = to_enclosure_device(dev->parent);
+	struct enclosure_component *ecomp = to_enclosure_component(dev);
+	u32 ptrns = 0;
+	enum enclosure_status ret = ENCLOSURE_STATUS_OK;
+
+	if(edev->cb->get_active_patterns)
+		ret = edev->cb->get_active_patterns(edev, ecomp, &ptrns);
+
+	if (ret != 0)
+		dev_dbg(&edev->edev,
+			"Cannot get active_patterns: %d error returned\n", ret);
+
+	return sysfs_emit(buf, "%x\n", ptrns);
+}
+static DEVICE_ATTR_RW(active_patterns);
+
+static ssize_t supported_patterns_show(struct device *dev,
+				       struct device_attribute *attr, char *buf)
+{
+
+	u32 ptrns = 0;
+
+	if(edev->cb->get_supported_patterns)
+		ptrns = edev->cb->get_supported_patterns(edev, ecomp);
+
+	return sysfs_emit(buf, "%x\n", ptrns);
+}
+static DEVICE_ATTR_RO(supported_patterns);
+
+static struct attribute *npem_attrs[] = {
+	&dev_attr_supported_patterns.attr,
+	&dev_attr_active_patterns.attr,
+	NULL
 };
+ATTRIBUTE_GROUPS(npem);
 
 void pcie_npem_destroy(struct pci_dev *pdev)
 {
-	struct npem_device *npem = pdev->npem;
+	if (pdev->npem)
+		kfree(pdev->npem);
 
-	if (!npem)
-		return;
-
-	if (npem->edev) {
-		npem->edev->scratch = NULL;
-		enclosure_unregister(npem->edev);
-	}
-
-	kfree(npem);
+	kfree(pdev->npem);
 }
 
 void pcie_npem_init(struct pci_dev *pdev)
@@ -188,33 +233,11 @@ void pcie_npem_init(struct pci_dev *pdev)
 	    (cap & NPEM_ENABLED) == 0)
 		goto err;
 
-	/* Don't register device if NPEM is not enabled */
-	if (!(cap & NPEM_ENABLED))
-		goto err;
-
 	npem = kzalloc(sizeof(*npem), GFP_KERNEL);
 	if (!npem)
 		goto err;
 
 	npem->supported_patterns = cap & ~(NPEM_ENABLED | NPEM_RESET);
-
-	edev = enclosure_register(&pdev->dev, dev_name(&pdev->dev), 1,
-				  &npem_cb);
-	if (IS_ERR(edev))
-		goto err;
-
-	ecomp = enclosure_component_alloc(edev, 0, ENCLOSURE_COMPONENT_DEVICE,
-					  dev_name(&pdev->dev));
-	if (IS_ERR(ecomp))
-		goto err;
-
-	ecomp->type = ENCLOSURE_COMPONENT_ARRAY_DEVICE;
-
-	if (enclosure_component_register(ecomp) < 0)
-		goto err;
-
-	ecomp->scratch = npem;
-	npem->edev = edev;
 	npem->pdev = pdev;
 	pdev->npem = npem;
 	return;
