@@ -472,74 +472,6 @@ static const char *const enclosure_type[] = {
 	[ENCLOSURE_COMPONENT_ARRAY_DEVICE] = "array device",
 };
 
-static ssize_t active_patterns_store(struct device *dev,
-				     struct device_attribute *attr,
-				     const char *buf, size_t count)
-{
-	struct enclosure_device *edev = to_enclosure_device(dev->parent);
-	struct enclosure_component *ecomp = to_enclosure_component(dev);
-	u32 supported_ptrns, new_ptrns;
-	unsigned int val;
-	enum enclosure_status ret;
-
-	if (kstrtouint(buf, 16, &val) != 0)
-		return -EINVAL;
-
-	new_ptrns = (u32) val;
-
-	if(!edev->cb->get_supported_patterns)
-		return -EACCES;
-
-	supported_ptrns = edev->cb->get_supported_patterns(edev, ecomp);
-
-	/* Set if requested bits are supported */
-	if ((new_ptrns & supported_ptrns) != new_ptrns)
-		return -EPERM;
-
-	ret = edev->cb->set_active_patterns(edev, ecomp, new_ptrns);
-
-	if (ret != ENCLOSURE_STATUS_OK) {
-		dev_dbg(&edev->edev,
-			"Cannot set active_patterns: %s error returned\n",
-			enclosure_status[ret]);
-		return -EFAULT;
-	}
-	return count;
-}
-
-static ssize_t active_patterns_show(struct device *dev,
-				    struct device_attribute *attr, char *buf)
-{
-	struct enclosure_device *edev = to_enclosure_device(dev->parent);
-	struct enclosure_component *ecomp = to_enclosure_component(dev);
-	u32 ptrns = 0;
-	enum enclosure_status ret = ENCLOSURE_STATUS_OK;
-
-	if(edev->cb->get_active_patterns)
-		ret = edev->cb->get_active_patterns(edev, ecomp, &ptrns);
-
-	if (ret != 0)
-		dev_dbg(&edev->edev,
-			"Cannot get active_patterns: %d error returned\n", ret);
-
-	return sysfs_emit(buf, "%x\n", ptrns);
-}
-static DEVICE_ATTR_RW(active_patterns);
-
-static ssize_t supported_patterns_show(struct device *dev,
-				       struct device_attribute *attr, char *buf)
-{
-	struct enclosure_device *edev = to_enclosure_device(dev->parent);
-	struct enclosure_component *ecomp = to_enclosure_component(dev);
-	u32 ptrns = 0;
-
-	if(edev->cb->get_supported_patterns)
-		ptrns = edev->cb->get_supported_patterns(edev, ecomp);
-
-	return sysfs_emit(buf, "%x\n", ptrns);
-}
-static DEVICE_ATTR_RO(supported_patterns);
-
 static ssize_t fault_show(struct device *cdev, struct device_attribute *attr,
 			  char *buf)
 {
@@ -723,8 +655,6 @@ static struct attribute *enclosure_component_attrs[] = {
 	&dev_attr_power_status.attr,
 	&dev_attr_type.attr,
 	&dev_attr_slot.attr,
-	&dev_attr_supported_patterns.attr,
-	&dev_attr_active_patterns.attr,
 	NULL
 };
 ATTRIBUTE_GROUPS(enclosure_component);
