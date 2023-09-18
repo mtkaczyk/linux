@@ -70,19 +70,6 @@ struct enclosure_component_callbacks {
 	int (*set_locate)(struct enclosure_device *,
 			  struct enclosure_component *,
 			  enum enclosure_component_setting);
-
-	u32 (*get_supported_patterns)(struct enclosure_device *edev,
-				      struct enclosure_component *ecomp);
-
-	int (*get_active_patterns)(struct enclosure_device *edev,
-				   struct enclosure_component *ecomp,
-				   u32 *ptrns);
-
-	enum enclosure_status
-	(*set_active_patterns)(struct enclosure_device *edev,
-			       struct enclosure_component *ecomp,
-			       u32 new_ptrns);
-
 	void (*get_power_status)(struct enclosure_device *,
 				 struct enclosure_component *);
 	int (*set_power_status)(struct enclosure_device *,
