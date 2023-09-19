@@ -112,33 +112,31 @@ static int npem_get_active_patterns(struct npem_device *npem, u32 *output)
 	return 0;
 }
 
-static u32 npem_get_supported_patterns(struct npem_device *npem)
-{
-	return npem->supported_patterns;
-}
-
 static int npem_set_active_patterns(struct npem_device *npem, u32 new_ptrns)
 {
-	struct npem_device *npem = ecomp->scratch;
 	u32 curr_ptrns;
+	int ret = npem_get_active_patterns(npem, &curr_ptrns);
 
-	if (get_active_patterns_npem(npem, &curr_ptrns) != 0)
-		return ENCLOSURE_STATUS_CRITICAL;
+	if (ret)
+		return ret;
 
 	if (curr_ptrns == new_ptrns)
-		return ENCLOSURE_STATUS_NON_CRITICAL;
+		return -EPERM;
 
-	if (set_active_patterns_npem(npem, new_ptrns) != 0)
-		return ENCLOSURE_STATUS_CRITICAL;
+	ret = set_active_patterns_npem(npem, new_ptrns);
+	if (ret)
+		return ret;
 
-	return ENCLOSURE_STATUS_OK;
+	return 0;
 }
 
 static ssize_t active_patterns_store(struct device *dev,
 				     struct device_attribute *attr,
 				     const char *buf, size_t count)
 {
-	u32 supported_ptrns, new_ptrns;
+	struct pci_dev *pdev = to_pci_dev(dev);
+	struct npem_device *npem = pdev->npem;
+	u32 new_ptrns;
 	unsigned int val;
 	int ret;
 
@@ -147,39 +145,28 @@ static ssize_t active_patterns_store(struct device *dev,
 
 	new_ptrns = (u32) val;
 
-	if(!edev->cb->get_supported_patterns)
-		return -EACCES;
-
-	supported_ptrns = npem_get_supported_patterns(edev, ecomp);
-
 	/* Set if requested bits are supported */
-	if ((new_ptrns & supported_ptrns) != new_ptrns)
+	if ((new_ptrns & npem->supported_patterns) != new_ptrns)
 		return -EPERM;
 
-	ret = edev->cb->set_active_patterns(edev, ecomp, new_ptrns);
+	ret = npem_set_active_patterns(npem, new_ptrns);
 
-	if (ret != ENCLOSURE_STATUS_OK) {
-		dev_dbg(&edev->edev,
-			"Cannot set active_patterns: %s error returned\n",
-			enclosure_status[ret]);
-		return -EFAULT;
-	}
+	if (ret)
+		return ret;
 	return count;
 }
 
 static ssize_t active_patterns_show(struct device *dev,
 				    struct device_attribute *attr, char *buf)
 {
-	struct enclosure_device *edev = to_enclosure_device(dev->parent);
-	struct enclosure_component *ecomp = to_enclosure_component(dev);
+	struct pci_dev *pdev = to_pci_dev(dev);
+	struct npem_device *npem = pdev->npem;
 	u32 ptrns = 0;
-	enum enclosure_status ret = ENCLOSURE_STATUS_OK;
+	int ret = 0;
 
-	if(edev->cb->get_active_patterns)
-		ret = edev->cb->get_active_patterns(edev, ecomp, &ptrns);
-
-	if (ret != 0)
-		dev_dbg(&edev->edev,
+	ret = npem_get_active_patterns(npem, &ptrns);
+	if (ret)
+		pci_err(pdev,
 			"Cannot get active_patterns: %d error returned\n", ret);
 
 	return sysfs_emit(buf, "%x\n", ptrns);
@@ -189,36 +176,26 @@ static DEVICE_ATTR_RW(active_patterns);
 static ssize_t supported_patterns_show(struct device *dev,
 				       struct device_attribute *attr, char *buf)
 {
+	struct pci_dev *pdev = to_pci_dev(dev);
+	struct npem_device *npem = pdev->npem;
 
-	u32 ptrns = 0;
-
-	if(edev->cb->get_supported_patterns)
-		ptrns = edev->cb->get_supported_patterns(edev, ecomp);
-
-	return sysfs_emit(buf, "%x\n", ptrns);
+	return sysfs_emit(buf, "%x\n", npem->supported_patterns);
 }
 static DEVICE_ATTR_RO(supported_patterns);
 
-static struct attribute *npem_attrs[] = {
-	&dev_attr_supported_patterns.attr,
-	&dev_attr_active_patterns.attr,
-	NULL
-};
-ATTRIBUTE_GROUPS(npem);
-
 void pcie_npem_destroy(struct pci_dev *pdev)
 {
-	if (pdev->npem)
-		kfree(pdev->npem);
+	if (!pdev->npem)
+		return;
 
 	kfree(pdev->npem);
+	device_remove_file(&pdev->dev, &dev_attr_supported_patterns);
+	device_remove_file(&pdev->dev, &dev_attr_active_patterns);
 }
 
 void pcie_npem_init(struct pci_dev *pdev)
 {
 	struct npem_device *npem;
-	struct enclosure_device *edev;
-	struct enclosure_component *ecomp;
 	int pos;
 	u32 cap;
 
@@ -240,6 +217,9 @@ void pcie_npem_init(struct pci_dev *pdev)
 	npem->supported_patterns = cap & ~(NPEM_ENABLED | NPEM_RESET);
 	npem->pdev = pdev;
 	pdev->npem = npem;
+
+	device_create_file(&pdev->dev, &dev_attr_supported_patterns);
+	device_create_file(&pdev->dev, &dev_attr_active_patterns);
 	return;
 err:
 	pci_err(pdev, "Failed to register Native PCIe enclosure management driver\n");
