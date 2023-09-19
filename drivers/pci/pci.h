@@ -331,6 +331,7 @@ struct npem_device {
 };
 void pcie_npem_init(struct pci_dev *pdev);
 void pcie_npem_destroy(struct pci_dev *pdev);
+extern const struct attribute_group npem_attr_group;
 #else
 static inline void pcie_npem_init(struct pci_dev *pdev) { }
 static inline void pcie_npem_destroy(struct pci_dev *pdev) { }

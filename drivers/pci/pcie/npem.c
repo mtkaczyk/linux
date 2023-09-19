@@ -183,20 +183,41 @@ static ssize_t supported_patterns_show(struct device *dev,
 }
 static DEVICE_ATTR_RO(supported_patterns);
 
+static struct attribute *npem_stats_attrs[] __ro_after_init = {
+	&dev_attr_active_patterns.attr,
+	&dev_attr_supported_patterns.attr,
+	NULL
+};
+
+static umode_t npem_is_visible(struct kobject *kobj, struct attribute *attr,
+			       int i)
+{
+	struct device *dev = kobj_to_dev(kobj);
+	struct pci_dev *pdev = to_pci_dev(dev);
+
+	if (!pdev->npem)
+		return 0;
+
+	return attr->mode;
+}
+
+const struct attribute_group npem_attr_group = {
+	.attrs  = npem_stats_attrs,
+	.is_visible = npem_is_visible,
+};
+
 void pcie_npem_destroy(struct pci_dev *pdev)
 {
 	if (!pdev->npem)
 		return;
 
 	kfree(pdev->npem);
-	device_remove_file(&pdev->dev, &dev_attr_supported_patterns);
-	device_remove_file(&pdev->dev, &dev_attr_active_patterns);
 }
 
 void pcie_npem_init(struct pci_dev *pdev)
 {
 	struct npem_device *npem;
-	int pos;
+	int pos, ret = 0;
 	u32 cap;
 
 	if (pci_pcie_type(pdev) != PCI_EXP_TYPE_DOWNSTREAM)
@@ -208,19 +229,20 @@ void pcie_npem_init(struct pci_dev *pdev)
 
 	if( pci_read_config_dword(pdev, pos + PCI_NPEM_CAP, &cap) != 0 ||
 	    (cap & NPEM_ENABLED) == 0)
-		goto err;
+		return;
 
 	npem = kzalloc(sizeof(*npem), GFP_KERNEL);
 	if (!npem)
-		goto err;
+		return;
 
 	npem->supported_patterns = cap & ~(NPEM_ENABLED | NPEM_RESET);
+
+	if (ret) {
+		pci_err(pdev, "npem: Failed to create sysfs files\n");
+		kfree(npem);
+		return;
+	}
+
 	npem->pdev = pdev;
 	pdev->npem = npem;
-
-	device_create_file(&pdev->dev, &dev_attr_supported_patterns);
-	device_create_file(&pdev->dev, &dev_attr_active_patterns);
-	return;
-err:
-	pci_err(pdev, "Failed to register Native PCIe enclosure management driver\n");
 }
