@@ -2,11 +2,7 @@
 /*
  * Native PCIe Enclosure Management
  *	PCie Base Specification r6.0.1-1.0 sec 6.28
- * _DSM Definitions for PCIe SSD Status LED
- *	PCI Firmware Specification Rev 3.3 sec 4.7
  *
- * Copyright (c) 2022 Dell Inc.
- *	Stuart Hayes <stuart.w.hayes@gmail.com>
  * Copyright (c) 2023 Intel Corporation
  *	Mariusz Tkaczyk <mariusz.tkaczyk@linux.intel.com>
  */
@@ -75,7 +71,7 @@ static void wait_for_completion_npem(struct npem_device *npem)
 	}
 }
 
-static int set_active_patterns_npem(struct npem_device *npem, u32 val)
+static int npem_set_active_patterns(struct npem_device *npem, u32 val)
 {
 	u32 status;
 	int ret;
@@ -112,31 +108,13 @@ static int npem_get_active_patterns(struct npem_device *npem, u32 *output)
 	return 0;
 }
 
-static int npem_set_active_patterns(struct npem_device *npem, u32 new_ptrns)
-{
-	u32 curr_ptrns;
-	int ret = npem_get_active_patterns(npem, &curr_ptrns);
-
-	if (ret)
-		return ret;
-
-	if (curr_ptrns == new_ptrns)
-		return -EPERM;
-
-	ret = set_active_patterns_npem(npem, new_ptrns);
-	if (ret)
-		return ret;
-
-	return 0;
-}
-
 static ssize_t active_patterns_store(struct device *dev,
 				     struct device_attribute *attr,
 				     const char *buf, size_t count)
 {
 	struct pci_dev *pdev = to_pci_dev(dev);
 	struct npem_device *npem = pdev->npem;
-	u32 new_ptrns;
+	u32 new_ptrns, curr_ptrns;
 	unsigned int val;
 	int ret;
 
@@ -149,10 +127,17 @@ static ssize_t active_patterns_store(struct device *dev,
 	if ((new_ptrns & npem->supported_patterns) != new_ptrns)
 		return -EPERM;
 
-	ret = npem_set_active_patterns(npem, new_ptrns);
+	ret = npem_get_active_patterns(npem, &curr_ptrns);
+	if (ret)
+		return ret;;
 
+	if (new_ptrns == curr_ptrns)
+		return -EPERM;
+
+	ret = npem_set_active_patterns(npem, new_ptrns);
 	if (ret)
 		return ret;
+
 	return count;
 }
 
@@ -165,9 +150,6 @@ static ssize_t active_patterns_show(struct device *dev,
 	int ret = 0;
 
 	ret = npem_get_active_patterns(npem, &ptrns);
-	if (ret)
-		pci_err(pdev,
-			"Cannot get active_patterns: %d error returned\n", ret);
 
 	return sysfs_emit(buf, "%x\n", ptrns);
 }
@@ -217,7 +199,7 @@ void pcie_npem_destroy(struct pci_dev *pdev)
 void pcie_npem_init(struct pci_dev *pdev)
 {
 	struct npem_device *npem;
-	int pos, ret = 0;
+	int pos;
 	u32 cap;
 
 	if (pci_pcie_type(pdev) != PCI_EXP_TYPE_DOWNSTREAM)
@@ -235,14 +217,8 @@ void pcie_npem_init(struct pci_dev *pdev)
 	if (!npem)
 		return;
 
+	npem->pos = pos;
 	npem->supported_patterns = cap & ~(NPEM_ENABLED | NPEM_RESET);
-
-	if (ret) {
-		pci_err(pdev, "npem: Failed to create sysfs files\n");
-		kfree(npem);
-		return;
-	}
-
 	npem->pdev = pdev;
 	pdev->npem = npem;
 }
