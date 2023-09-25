@@ -15,6 +15,11 @@
 #include "../pci.h"
 #include "portdrv.h"
 
+/* NPEM */
+#define PCI_NPEM_CAP		0x04
+#define PCI_NPEM_CTRL		0x08
+#define PCI_NPEM_STATUS		0x0c
+
 /*
  * Special NPEM & _DSM bits. Not a patterns.
  */

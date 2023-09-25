@@ -1,9 +1,0 @@
-What:		/sys/class/enclosure/<enclosure>/<component>/supported_patterns
-What:		/sys/class/enclosure/<enclosure>/<component>/active_patterns
-
-Date:		August 2023
-Contact:	Mariusz Tkaczyk <mariusz.tkaczyk@linux.intel.com>
-Description:
-		Pattern oriented enclosure management implementation. Each bit represents one
-		pattern, but definition on every bit belongs to the standard used. Currently
-		only NPEM is supported. Only supported bits can be enabled.
