@@ -324,8 +324,6 @@ static inline void pci_doe_disconnected(struct pci_dev *pdev) { }
 #ifdef CONFIG_PCIE_NPEM
 struct npem_device {
 	struct pci_dev *pdev;
-	struct enclosure_device *edev;
-
 	u16 pos;
 	u32 supported_patterns;
 };

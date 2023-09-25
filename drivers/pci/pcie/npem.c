@@ -29,8 +29,6 @@
 /* NPEM Command completed */
 #define	NPEM_CC		BIT(0)
 
-#define IS_BIT_SET(mask, bit)	((mask & bit) == bit)
-
 static int npem_read_reg(struct npem_device *npem, u16 reg, u32 *val)
 {
 	int pos = npem->pos + reg;
@@ -66,7 +64,7 @@ static void wait_for_completion_npem(struct npem_device *npem)
 	while (true) {
 		/* Check status only if read is successful. */
 		if (npem_read_reg(npem, PCI_NPEM_STATUS, &status) == 0)
-			if (IS_BIT_SET(status, NPEM_CC))
+			if (status & NPEM_CC)
 				return;
 
 		if (time_after(jiffies, wait_end))
@@ -85,7 +83,7 @@ static int npem_set_active_patterns(struct npem_device *npem, u32 val)
 	if (ret != 0)
 		return ret;
 
-	if (!IS_BIT_SET(status, NPEM_CC))
+	if (!(status & NPEM_CC))
 		wait_for_completion_npem(npem);
 
 	val = val | NPEM_ENABLED;
@@ -102,7 +100,7 @@ static int npem_get_active_patterns(struct npem_device *npem, u32 *output)
 	if (ret != 0)
 		return ret;
 
-	if (IS_BIT_SET(status, NPEM_CC))
+	if (status & NPEM_CC)
 		wait_for_completion_npem(npem);
 
 	ret = npem_read_reg(npem, PCI_NPEM_CTRL, output);
