@@ -1,0 +1,19 @@
+Native PCIe Enclosure Management
+--------------------------
+
+These attributes show up under all devices with NPEM PCIe extended capability. These attributes
+allows to manipulate LED states in enclosure. Definition of particular bit can be found in PCIe
+Specification.
+
+What:		/sys/bus/pci/devices/<dev>/supported_patterns
+Date:		September 2023
+Contact:	linux-pci@vger.kernel.org, mariusz.tkaczyk@linux.intel.com
+Description: 	Readonly, list of supported patterns which can be visualized by the controller.
+		It is a bit mask, patterns are not directly defined. Note that NPEM special bits
+		are hidden.
+
+What:		/sys/bus/pci/devices/<dev>/active_patterns
+Date:		September 2023
+Contact:	linux-pci@vger.kernel.org, mariusz.tkaczyk@linux.intel.com
+Description: 	Writable, mask of currently active patterns, NPEM special bits are hidden. Patterns
+		could be mutually exclusive, it depends on controller.
