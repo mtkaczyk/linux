@@ -207,9 +207,6 @@ void pcie_npem_init(struct pci_dev *pdev)
 	int pos;
 	u32 cap;
 
-	if (pci_pcie_type(pdev) != PCI_EXP_TYPE_DOWNSTREAM)
-		return;
-
 	pos = pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_NPEM);
 	if (pos == 0)
 		return;
