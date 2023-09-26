@@ -151,4 +151,4 @@ config PCIE_NPEM
 	bool "Native PCIe Enclosure Management"
 	help
 	  This option adds support for Native PCIe Enclosure Management.
-	  It allows to manage LEDs blinking patterns in enclosures.
+	  It allows for manage LED blinking patterns in enclosures.

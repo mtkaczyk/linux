@@ -1,9 +1,9 @@
 Native PCIe Enclosure Management
 --------------------------
 
-These attributes show up under all devices with NPEM PCIe extended capability. These attributes
-allows to manipulate LED states in enclosure. Definition of particular bit can be found in PCIe
-Specification.
+Attributes will show up under all devices that support NPEM PCIe extended capabilities. These
+attributes allow for the manipulation of LED states in the enclosure.  Definitions of particular
+bits can be found in PCIe Base Specification r6.0.1-1.0 sec 6.28.
 
 What:		/sys/bus/pci/devices/<dev>/supported_patterns
 Date:		September 2023
