@@ -6,11 +6,14 @@
  * Copyright (c) 2023 Intel Corporation
  *	Mariusz Tkaczyk <mariusz.tkaczyk@linux.intel.com>
  */
-
-#include <linux/acpi.h>
+#include <linux/bits.h>
+#include <linux/delay.h>
+#include <linux/errno.h>
+#include <linux/kstrtox.h>
 #include <linux/pci.h>
 #include <linux/pci_regs.h>
-#include <linux/delay.h>
+#include <linux/sysfs.h>
+#include <linux/types.h>
 
 #include "../pci.h"
 #include "portdrv.h"
