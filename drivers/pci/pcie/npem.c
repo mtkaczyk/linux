@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Native PCIe Enclosure Management
- *	PCie Base Specification r6.0.1-1.0 sec 6.28
+ *	PCIe Base Specification r6.0.1-1.0 sec 6.28
  *
  * Copyright (c) 2023 Intel Corporation
  *	Mariusz Tkaczyk <mariusz.tkaczyk@linux.intel.com>
@@ -121,8 +121,9 @@ static ssize_t active_patterns_store(struct device *dev,
 	unsigned int val;
 	int ret;
 
-	if (kstrtouint(buf, 16, &val) != 0)
-		return -EINVAL;
+	ret = kstrtouint(buf, 16, &val);
+	if (ret)
+		return ret;
 
 	new_ptrns = (u32) val;
 
@@ -132,7 +133,7 @@ static ssize_t active_patterns_store(struct device *dev,
 
 	ret = npem_get_active_patterns(npem, &curr_ptrns);
 	if (ret)
-		return ret;;
+		return ret;
 
 	if (new_ptrns == curr_ptrns)
 		return -EPERM;
