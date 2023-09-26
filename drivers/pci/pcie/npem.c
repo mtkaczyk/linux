@@ -17,19 +17,15 @@
 #include <linux/types.h>
 
 #include "../pci.h"
-#include "portdrv.h"
 
-/* NPEM */
+/* NPEM Registers */
 #define PCI_NPEM_CAP		0x04
 #define PCI_NPEM_CTRL		0x08
 #define PCI_NPEM_STATUS		0x0c
 
-/*
- * Special NPEM & _DSM bits. Not a patterns.
- */
+/* Special NPEM bits. */
 #define	NPEM_ENABLED	BIT(0)
 #define	NPEM_RESET	BIT(1)
-
 /* NPEM Command completed */
 #define	NPEM_CC		BIT(0)
 
@@ -72,13 +68,10 @@ static void wait_for_completion_npem(struct npem_device *npem)
 
 	wait_end = jiffies + msecs_to_jiffies(1000);
 
-	while (true) {
+	while (time_before(jiffies, wait_end)) {
 		if (npem_read_reg(npem, PCI_NPEM_STATUS, &status) == 0)
 			if (status & NPEM_CC)
 				return;
-
-		if (time_after(jiffies, wait_end))
-			return;
 
 		usleep_range(10, 15);
 	}
