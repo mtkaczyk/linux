@@ -8,6 +8,7 @@
  */
 #include <linux/bits.h>
 #include <linux/delay.h>
+#include <linux/jiffies.h>
 #include <linux/errno.h>
 #include <linux/kstrtox.h>
 #include <linux/pci.h>
@@ -62,10 +63,16 @@ static int npem_write_ctrl(struct npem_device *npem, u32 reg)
 static void wait_for_completion_npem(struct npem_device *npem)
 {
 	u32 status;
-	unsigned long wait_end = jiffies + msecs_to_jiffies(1000);
+	unsigned long wait_end = 0;
+
+	/* Check first to avoid getting jiffies. */
+	if (npem_read_reg(npem, PCI_NPEM_STATUS, &status) == 0)
+		if (status & NPEM_CC)
+			return;
+
+	wait_end = jiffies + msecs_to_jiffies(1000);
 
 	while (true) {
-		/* Check status only if read is successful. */
 		if (npem_read_reg(npem, PCI_NPEM_STATUS, &status) == 0)
 			if (status & NPEM_CC)
 				return;
@@ -79,32 +86,17 @@ static void wait_for_completion_npem(struct npem_device *npem)
 
 static int npem_set_active_patterns(struct npem_device *npem, u32 val)
 {
-	u32 status;
-	int ret;
-
-	ret = npem_read_reg(npem, PCI_NPEM_STATUS, &status);
-	if (ret != 0)
-		return ret;
-
-	if (!(status & NPEM_CC))
-		wait_for_completion_npem(npem);
+	wait_for_completion_npem(npem);
 
 	val = val | NPEM_ENABLED;
-
 	return npem_write_ctrl(npem, val);
 }
 
 static int npem_get_active_patterns(struct npem_device *npem, u32 *output)
 {
-	u32 status;
 	int ret;
 
-	ret = npem_read_reg(npem, PCI_NPEM_STATUS, &status);
-	if (ret != 0)
-		return ret;
-
-	if (status & NPEM_CC)
-		wait_for_completion_npem(npem);
+	wait_for_completion_npem(npem);
 
 	ret = npem_read_reg(npem, PCI_NPEM_CTRL, output);
 	if (ret != 0)
