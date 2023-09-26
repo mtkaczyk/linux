@@ -210,7 +210,7 @@ void pcie_npem_init(struct pci_dev *pdev)
 	if (pos == 0)
 		return;
 
-	if( pci_read_config_dword(pdev, pos + PCI_NPEM_CAP, &cap) != 0 ||
+	if (pci_read_config_dword(pdev, pos + PCI_NPEM_CAP, &cap) != 0 ||
 	    (cap & NPEM_ENABLED) == 0)
 		return;
 
