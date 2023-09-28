@@ -29,6 +29,12 @@
 /* NPEM Command completed */
 #define	NPEM_CC		BIT(0)
 
+struct npem_device {
+	struct pci_dev *pdev;
+	u16 pos;
+	u32 supported_patterns;
+};
+
 static int npem_read_reg(struct npem_device *npem, u16 reg, u32 *val)
 {
 	int pos = npem->pos + reg;
@@ -40,13 +46,14 @@ static int npem_read_reg(struct npem_device *npem, u16 reg, u32 *val)
 static int npem_write_ctrl(struct npem_device *npem, u32 reg)
 {
 	int pos = npem->pos + PCI_NPEM_CTRL;
-	int ret =  pci_write_config_dword(npem->pdev, pos, reg);
+	int ret = pci_write_config_dword(npem->pdev, pos, reg);
 
 	return pcibios_err_to_errno(ret);
 }
 
 /**
  * wait_for_completion_npem() - wait to command completed status bit to be high.
+ * @npem: npem device.
  *
  * If the bit is not set within 1 second limit on command execution, software
  * is permitted to repeat the NPEM command or issue the next NPEM command.
@@ -180,7 +187,7 @@ const struct attribute_group npem_attr_group = {
 	.is_visible = npem_is_visible,
 };
 
-void pcie_npem_destroy(struct pci_dev *pdev)
+void pcie_npem_destroy(struct pci_dev *dev)
 {
 	if (!pdev->npem)
 		return;
@@ -188,17 +195,17 @@ void pcie_npem_destroy(struct pci_dev *pdev)
 	kfree(pdev->npem);
 }
 
-void pcie_npem_init(struct pci_dev *pdev)
+void pcie_npem_init(struct pci_dev *dev)
 {
 	struct npem_device *npem;
 	int pos;
 	u32 cap;
 
-	pos = pci_find_ext_capability(pdev, PCI_EXT_CAP_ID_NPEM);
+	pos = pci_find_ext_capability(dev, PCI_EXT_CAP_ID_NPEM);
 	if (pos == 0)
 		return;
 
-	if (pci_read_config_dword(pdev, pos + PCI_NPEM_CAP, &cap) != 0 ||
+	if (pci_read_config_dword(dev, pos + PCI_NPEM_CAP, &cap) != 0 ||
 	    (cap & NPEM_ENABLED) == 0)
 		return;
 

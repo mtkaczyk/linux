@@ -322,17 +322,12 @@ static inline void pci_doe_disconnected(struct pci_dev *pdev) { }
 #endif
 
 #ifdef CONFIG_PCIE_NPEM
-struct npem_device {
-	struct pci_dev *pdev;
-	u16 pos;
-	u32 supported_patterns;
-};
-void pcie_npem_init(struct pci_dev *pdev);
-void pcie_npem_destroy(struct pci_dev *pdev);
+void pcie_npem_init(struct pci_dev *dev);
+void pcie_npem_destroy(struct pci_dev *dev);
 extern const struct attribute_group npem_attr_group;
 #else
-static inline void pcie_npem_init(struct pci_dev *pdev) { }
-static inline void pcie_npem_destroy(struct pci_dev *pdev) { }
+static inline void pcie_npem_init(struct pci_dev *dev) { }
+static inline void pcie_npem_destroy(struct pci_dev *dev) { }
 #endif
 
 /**
