@@ -1,7 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Native PCIe Enclosure Management
- *	PCIe Base Specification r6.0.1-1.0 sec 6.28
+ *	PCIe Base Specification r6.1-1.0 sec 6.28
+ *	PCIe Base Specification r6.1-1.0 sec 7.9.19
  *
  * Copyright (c) 2023 Intel Corporation
  *	Mariusz Tkaczyk <mariusz.tkaczyk@linux.intel.com>
