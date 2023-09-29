@@ -5,24 +5,24 @@ Attributes will show up under all devices that support NPEM PCIe extended capabi
 attributes allow for the manipulation of LED states in the enclosure. Definition of the bits and
 more details can be found in PCIe Base Specification r6.1-1.0 sec 6.28 and sec 7.9.19. Driver is
 not registered if NPEM_CAPABLE bit is off.
+It is projected to be exclusive manager of NPEM extended capability registers. Concurrent register
+updates are not well respected.
 
 What:		/sys/bus/pci/devices/<dev>/supported_patterns
 Date:		September 2023
 Contact:	linux-pci@vger.kernel.org, mariusz.tkaczyk@linux.intel.com
 Description:	Readonly, list of supported patterns which can be visualized by the controller.
 		It presents NPEM Capability Register content. Definition of bits can be found in
-		PCIe Base Specification r6.1-1.0 sec 7.9.19.2. NPEM_ENABLED and NPEM_RESET bits are
-		always off, these are special bits and should not be checked by user.
+		PCIe Base Specification r6.1-1.0 sec 7.9.19.2. Special NPEM_ENABLED and NPEM_RESET
+		are presented as disabled to the user.
 
 What:		/sys/bus/pci/devices/<dev>/active_patterns
 Date:		September 2023
 Contact:	linux-pci@vger.kernel.org, mariusz.tkaczyk@linux.intel.com
 Description:	Writable, mask of currently active patterns. It presents NPEM Control register
 		content. Definition of bits can be found in PCIe Base Specification
-		r6.1-1.0 sec 7.9.19.3. NPEM_ENABLE and NPEM_INITIATE_RESET are always reported as
-		off and cannot be set. NPEM_ENABLE is turned on automatically with every request.
-		NPEM_INITIATE_RESET is not settable, it means that driver doesn't provide
-		possibility to reset controller.
+		r6.1-1.0 sec 7.9.19.3. Special NPEM_ENABLE and NPEM_INITIATE_RESET are presented as
+		disabled and cannot be set. Driver adds NPEM_ENABLE to every request.
 
 		Pattern definitions should be consistent with content of NPEM Capability register,
 		Driver allows to enable bit only if appropriative bit in NPEM Capability register
