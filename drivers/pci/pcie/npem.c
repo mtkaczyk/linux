@@ -151,6 +151,7 @@ static ssize_t active_patterns_show(struct device *dev,
 	u32 ptrns;
 
 	int ret = mutex_lock_interruptible(&npem->npem_lock);
+
 	if (ret)
 		goto out;
 
