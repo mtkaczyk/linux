@@ -13,6 +13,7 @@
 #include <linux/jiffies.h>
 #include <linux/errno.h>
 #include <linux/kstrtox.h>
+#include <linux/mutex.h>
 #include <linux/pci.h>
 #include <linux/pci_regs.h>
 #include <linux/sysfs.h>
@@ -33,6 +34,7 @@
 
 struct npem_device {
 	struct pci_dev *dev;
+	struct mutex * npem_lock;
 	u16 pos;
 	u32 supported_patterns;
 };
@@ -63,45 +65,44 @@ static int npem_read_cc_status(struct npem_device *npem)
 	return val;
 }
 
-/**
- * wait_for_completion_npem() - wait to command completed status bit to be high.
- * @npem: npem device.
- *
- * If the bit is not set within 1 second limit on command execution, software
- * is permitted to repeat the NPEM command or issue the next NPEM command.
- *
- * For the case where an NPEM command has not completed when software polls the
- * bit, it is recommended that software not continuously “spin” on polling the
- * bit, but rather poll under interrupt at a reduced rate; for example at 10 ms
- * intervals.
- */
-static void wait_for_completion_npem(struct npem_device *npem)
-{
-	int val;
-
-	read_poll_timeout(npem_read_cc_status, val, val, 15, 1000000, false,
-			  npem);
-}
-
 static int npem_set_active_patterns(struct npem_device *npem, u32 val)
 {
-	wait_for_completion_npem(npem);
+	int cc_status;
+	int ret;
+
+	lockdep_assert_held(npem->npem_lock);
 
 	val |= NPEM_ENABLED;
-	return npem_write_ctrl(npem, val);
+	ret = npem_write_ctrl(npem, val);
+	if (ret)
+		return ret;
+
+	/*
+	 * If the status bit is not set within 1 second limit on command
+	 * execution, software is permitted to repeat the NPEM command or issue
+	 * the next NPEM command.
+	 *
+	 * For the case where an NPEM command has not completed when software
+	 * polls the bit, it is recommended that software not continuously
+	 * “spin” on polling the bit, but rather poll under interrupt
+	 * at a reduced rate; for example at 10 ms intervals.
+	 */
+	return read_poll_timeout(npem_read_cc_status, cc_status, cc_status, 15,
+			  1000000, false, npem);
 }
 
 static int npem_get_active_patterns(struct npem_device *npem, u32 *output)
 {
 	int ret;
 
-	wait_for_completion_npem(npem);
+	lockdep_assert_held(npem->npem_lock);
 
 	ret = npem_read_reg(npem, PCI_NPEM_CTRL, output);
 	if (ret != 0)
 		return ret;
 
 	*output &= ~(NPEM_ENABLED | NPEM_RESET);
+	mutex_unlock(npem->npem_lock);
 	return 0;
 }
 
@@ -125,18 +126,22 @@ static ssize_t active_patterns_store(struct device *dev,
 	if ((new_ptrns & npem->supported_patterns) != new_ptrns)
 		return -EPERM;
 
+	ret = mutex_lock_interruptible(npem->npem_lock);
+	if (ret)
+		return ret;
+
 	ret = npem_get_active_patterns(npem, &curr_ptrns);
 	if (ret)
-		return ret;
+		goto out_unlock;
 
-	if (new_ptrns == curr_ptrns)
-		return -EPERM;
+	if (new_ptrns != curr_ptrns)
+		ret = npem_set_active_patterns(npem, new_ptrns);
+	else
+		ret = -EPERM;
 
-	ret = npem_set_active_patterns(npem, new_ptrns);
-	if (ret)
-		return ret;
-
-	return count;
+out_unlock:
+	mutex_unlock(npem->npem_lock);
+	return ret ? ret : count;
 }
 
 static ssize_t active_patterns_show(struct device *dev,
@@ -145,11 +150,18 @@ static ssize_t active_patterns_show(struct device *dev,
 	struct pci_dev *pdev = to_pci_dev(dev);
 	struct npem_device *npem = pdev->npem;
 	u32 ptrns;
-	int ret = npem_get_active_patterns(npem, &ptrns);
+
+	int ret = mutex_lock_interruptible(npem->npem_lock);
+	if (ret)
+		goto out;
+
+	ret = npem_get_active_patterns(npem, &ptrns);
 
 	if (ret)
 		ptrns = 0;
 
+	mutex_unlock(npem->npem_lock);
+out:
 	return sysfs_emit(buf, "%x8\n", ptrns);
 }
 static DEVICE_ATTR_RW(active_patterns);
@@ -214,4 +226,5 @@ void pcie_npem_init(struct pci_dev *dev)
 	npem->supported_patterns = cap & ~(NPEM_ENABLED | NPEM_RESET);
 	npem->dev = dev;
 	dev->npem = npem;
+	mutex_init(npem->npem_lock);
 }
