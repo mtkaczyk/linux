@@ -122,7 +122,7 @@ static ssize_t active_patterns_store(struct device *dev,
 	new_patterns = val;
 
 	/* Set if requested bits are supported */
-	if ((new_patterns & npem->supported_patterns) != new_ptrns)
+	if ((new_patterns & npem->supported_patterns) != new_patterns)
 		return -EPERM;
 
 	ret = mutex_lock_interruptible(&npem->npem_lock);
