@@ -8,6 +8,7 @@
  */
 #include <linux/bits.h>
 #include <linux/delay.h>
+#include <linux/iopoll.h>
 #include <linux/jiffies.h>
 #include <linux/errno.h>
 #include <linux/kstrtox.h>
@@ -30,7 +31,7 @@
 #define	NPEM_CC		BIT(0)
 
 struct npem_device {
-	struct pci_dev *pdev;
+	struct pci_dev *dev;
 	u16 pos;
 	u32 supported_patterns;
 };
@@ -38,7 +39,7 @@ struct npem_device {
 static int npem_read_reg(struct npem_device *npem, u16 reg, u32 *val)
 {
 	int pos = npem->pos + reg;
-	int ret = pci_read_config_dword(npem->pdev, pos, val);
+	int ret = pci_read_config_dword(npem->dev, pos, val);
 
 	return pcibios_err_to_errno(ret);
 }
@@ -46,9 +47,19 @@ static int npem_read_reg(struct npem_device *npem, u16 reg, u32 *val)
 static int npem_write_ctrl(struct npem_device *npem, u32 reg)
 {
 	int pos = npem->pos + PCI_NPEM_CTRL;
-	int ret = pci_write_config_dword(npem->pdev, pos, reg);
+	int ret = pci_write_config_dword(npem->dev, pos, reg);
 
 	return pcibios_err_to_errno(ret);
+}
+
+static int npem_read_cc_status(struct npem_device *npem)
+{
+	int val = 0;
+	int ret = npem_read_reg(npem, PCI_NPEM_STATUS, &val);
+
+	if (ret)
+		return 0;
+	return val;
 }
 
 /**
@@ -65,30 +76,17 @@ static int npem_write_ctrl(struct npem_device *npem, u32 reg)
  */
 static void wait_for_completion_npem(struct npem_device *npem)
 {
-	u32 status;
-	unsigned long wait_end = 0;
+	int val;
 
-	/* Check first to avoid getting jiffies. */
-	if (npem_read_reg(npem, PCI_NPEM_STATUS, &status) == 0)
-		if (status & NPEM_CC)
-			return;
-
-	wait_end = jiffies + msecs_to_jiffies(1000);
-
-	while (time_before(jiffies, wait_end)) {
-		if (npem_read_reg(npem, PCI_NPEM_STATUS, &status) == 0)
-			if (status & NPEM_CC)
-				return;
-
-		usleep_range(10, 15);
-	}
+	read_poll_timeout(npem_read_cc_status, val, val, 15, 1000000, false,
+			  npem);
 }
 
 static int npem_set_active_patterns(struct npem_device *npem, u32 val)
 {
 	wait_for_completion_npem(npem);
 
-	val = val | NPEM_ENABLED;
+	val |= NPEM_ENABLED;
 	return npem_write_ctrl(npem, val);
 }
 
@@ -102,7 +100,7 @@ static int npem_get_active_patterns(struct npem_device *npem, u32 *output)
 	if (ret != 0)
 		return ret;
 
-	*output = *output & ~(NPEM_ENABLED | NPEM_RESET);
+	*output &= ~(NPEM_ENABLED | NPEM_RESET);
 	return 0;
 }
 
@@ -120,7 +118,7 @@ static ssize_t active_patterns_store(struct device *dev,
 	if (ret)
 		return ret;
 
-	new_ptrns = (u32) val;
+	new_ptrns = val;
 
 	/* Set if requested bits are supported */
 	if ((new_ptrns & npem->supported_patterns) != new_ptrns)
@@ -145,12 +143,13 @@ static ssize_t active_patterns_show(struct device *dev,
 {
 	struct pci_dev *pdev = to_pci_dev(dev);
 	struct npem_device *npem = pdev->npem;
-	u32 ptrns = 0;
-	int ret = 0;
+	u32 ptrns;
+	int ret = npem_get_active_patterns(npem, &ptrns);
 
-	ret = npem_get_active_patterns(npem, &ptrns);
+	if (ret)
+		ptrns = 0;
 
-	return sysfs_emit(buf, "%x\n", ptrns);
+	return sysfs_emit(buf, "%x8\n", ptrns);
 }
 static DEVICE_ATTR_RW(active_patterns);
 
@@ -160,7 +159,7 @@ static ssize_t supported_patterns_show(struct device *dev,
 	struct pci_dev *pdev = to_pci_dev(dev);
 	struct npem_device *npem = pdev->npem;
 
-	return sysfs_emit(buf, "%x\n", npem->supported_patterns);
+	return sysfs_emit(buf, "%x8\n", npem->supported_patterns);
 }
 static DEVICE_ATTR_RO(supported_patterns);
 
@@ -170,8 +169,8 @@ static struct attribute *npem_stats_attrs[] __ro_after_init = {
 	NULL
 };
 
-static umode_t npem_is_visible(struct kobject *kobj, struct attribute *attr,
-			       int i)
+static umode_t
+npem_is_visible(struct kobject *kobj, struct attribute *attr, int i)
 {
 	struct device *dev = kobj_to_dev(kobj);
 	struct pci_dev *pdev = to_pci_dev(dev);
@@ -189,10 +188,7 @@ const struct attribute_group npem_attr_group = {
 
 void pcie_npem_destroy(struct pci_dev *dev)
 {
-	if (!pdev->npem)
-		return;
-
-	kfree(pdev->npem);
+	kfree(dev->npem);
 }
 
 void pcie_npem_init(struct pci_dev *dev)
@@ -215,6 +211,6 @@ void pcie_npem_init(struct pci_dev *dev)
 
 	npem->pos = pos;
 	npem->supported_patterns = cap & ~(NPEM_ENABLED | NPEM_RESET);
-	npem->pdev = pdev;
-	pdev->npem = npem;
+	npem->dev = dev;
+	dev->npem = npem;
 }
