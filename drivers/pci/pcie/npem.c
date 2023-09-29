@@ -111,7 +111,7 @@ static ssize_t active_patterns_store(struct device *dev,
 {
 	struct pci_dev *pdev = to_pci_dev(dev);
 	struct npem_device *npem = pdev->npem;
-	u32 new_ptrns, curr_ptrns;
+	u32 new_patterns, curr_patterns;
 	unsigned int val;
 	int ret;
 
@@ -119,22 +119,22 @@ static ssize_t active_patterns_store(struct device *dev,
 	if (ret)
 		return ret;
 
-	new_ptrns = val;
+	new_patterns = val;
 
 	/* Set if requested bits are supported */
-	if ((new_ptrns & npem->supported_patterns) != new_ptrns)
+	if ((new_patterns & npem->supported_patterns) != new_ptrns)
 		return -EPERM;
 
 	ret = mutex_lock_interruptible(&npem->npem_lock);
 	if (ret)
 		return ret;
 
-	ret = npem_get_active_patterns(npem, &curr_ptrns);
+	ret = npem_get_active_patterns(npem, &curr_patterns);
 	if (ret)
 		goto out_unlock;
 
-	if (new_ptrns != curr_ptrns)
-		ret = npem_set_active_patterns(npem, new_ptrns);
+	if (new_patterns != curr_patterns)
+		ret = npem_set_active_patterns(npem, new_patterns);
 	else
 		ret = -EPERM;
 
@@ -148,21 +148,21 @@ static ssize_t active_patterns_show(struct device *dev,
 {
 	struct pci_dev *pdev = to_pci_dev(dev);
 	struct npem_device *npem = pdev->npem;
-	u32 ptrns;
+	u32 patterns;
 
 	int ret = mutex_lock_interruptible(&npem->npem_lock);
 
 	if (ret)
 		goto out;
 
-	ret = npem_get_active_patterns(npem, &ptrns);
+	ret = npem_get_active_patterns(npem, &patterns);
 
 	if (ret)
-		ptrns = 0;
+		patterns = 0;
 
 	mutex_unlock(&npem->npem_lock);
 out:
-	return sysfs_emit(buf, "%08x\n", ptrns);
+	return sysfs_emit(buf, "%08x\n", patterns);
 }
 static DEVICE_ATTR_RW(active_patterns);
 
