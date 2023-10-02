@@ -9,7 +9,8 @@ It is projected to be exclusive manager of NPEM extended capability registers. C
 updates are not well respected.
 
 What:		/sys/bus/pci/devices/<dev>/supported_patterns
-Date:		September 2023
+Date:		November 2023
+KernelVersion:	6.7
 Contact:	linux-pci@vger.kernel.org, mariusz.tkaczyk@linux.intel.com
 Description:	Readonly, list of supported patterns which can be visualized by the controller.
 		It presents NPEM Capability Register content. Definition of bits can be found in
@@ -17,7 +18,8 @@ Description:	Readonly, list of supported patterns which can be visualized by the
 		are presented as disabled to the user.
 
 What:		/sys/bus/pci/devices/<dev>/active_patterns
-Date:		September 2023
+Date:		November 2023
+KernelVersion:	6.7
 Contact:	linux-pci@vger.kernel.org, mariusz.tkaczyk@linux.intel.com
 Description:	Writable, mask of currently active patterns. It presents NPEM Control register
 		content. Definition of bits can be found in PCIe Base Specification

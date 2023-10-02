@@ -35,8 +35,9 @@
 struct npem_device {
 	struct pci_dev *dev;
 	struct mutex npem_lock;
-	u16 pos;
 	u32 supported_patterns;
+	u16 pos;
+
 };
 
 static int npem_read_reg(struct npem_device *npem, u16 reg, u32 *val)
@@ -55,20 +56,10 @@ static int npem_write_ctrl(struct npem_device *npem, u32 reg)
 	return pcibios_err_to_errno(ret);
 }
 
-static int npem_read_cc_status(struct npem_device *npem)
-{
-	int val = 0;
-	int ret = npem_read_reg(npem, PCI_NPEM_STATUS, &val);
-
-	if (ret)
-		return 0;
-	return val;
-}
-
 static int npem_set_active_patterns(struct npem_device *npem, u32 val)
 {
-	int cc_status;
-	int ret;
+	u32 cc_status;
+	int ret, ret_val;
 
 	lockdep_assert_held(&npem->npem_lock);
 
@@ -87,8 +78,11 @@ static int npem_set_active_patterns(struct npem_device *npem, u32 val)
 	 * “spin” on polling the bit, but rather poll under interrupt
 	 * at a reduced rate; for example at 10 ms intervals.
 	 */
-	return read_poll_timeout(npem_read_cc_status, cc_status, cc_status, 15,
-			  1000000, false, npem);
+	ret = read_poll_timeout(npem_read_reg, ret_val,
+				ret_val || (cc_status & NPEM_CC), 15, 1000000,
+				false, npem, PCI_NPEM_STATUS, &cc_status);
+
+	return ret ?: ret_val;
 }
 
 static int npem_get_active_patterns(struct npem_device *npem, u32 *output)
@@ -140,7 +134,7 @@ static ssize_t active_patterns_store(struct device *dev,
 
 out_unlock:
 	mutex_unlock(&npem->npem_lock);
-	return ret ? ret : count;
+	return ret ?: count;
 }
 
 static ssize_t active_patterns_show(struct device *dev,
@@ -148,21 +142,17 @@ static ssize_t active_patterns_show(struct device *dev,
 {
 	struct pci_dev *pdev = to_pci_dev(dev);
 	struct npem_device *npem = pdev->npem;
-	u32 patterns;
+	u32 patterns = 0;
+	int ret;
 
-	int ret = mutex_lock_interruptible(&npem->npem_lock);
-
+	ret = mutex_lock_interruptible(&npem->npem_lock);
 	if (ret)
-		goto out;
+		return ret;
 
 	ret = npem_get_active_patterns(npem, &patterns);
-
-	if (ret)
-		patterns = 0;
-
 	mutex_unlock(&npem->npem_lock);
-out:
-	return sysfs_emit(buf, "%08x\n", patterns);
+
+	return ret ?: sysfs_emit(buf, "%08x\n", patterns);
 }
 static DEVICE_ATTR_RW(active_patterns);
 
