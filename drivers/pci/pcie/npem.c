@@ -99,9 +99,9 @@ static int npem_get_active_patterns(struct npem_device *npem, u32 *output)
 	return 0;
 }
 
-static ssize_t active_patterns_store(struct device *dev,
-				     struct device_attribute *attr,
-				     const char *buf, size_t count)
+static ssize_t npem_active_patterns_store(struct device *dev,
+					  struct device_attribute *attr,
+					  const char *buf, size_t count)
 {
 	struct pci_dev *pdev = to_pci_dev(dev);
 	struct npem_device *npem = pdev->npem;
@@ -137,8 +137,9 @@ out_unlock:
 	return ret ?: count;
 }
 
-static ssize_t active_patterns_show(struct device *dev,
-				    struct device_attribute *attr, char *buf)
+static ssize_t npem_active_patterns_show(struct device *dev,
+					 struct device_attribute *attr,
+					 char *buf)
 {
 	struct pci_dev *pdev = to_pci_dev(dev);
 	struct npem_device *npem = pdev->npem;
@@ -154,21 +155,22 @@ static ssize_t active_patterns_show(struct device *dev,
 
 	return ret ?: sysfs_emit(buf, "%08x\n", patterns);
 }
-static DEVICE_ATTR_RW(active_patterns);
+static DEVICE_ATTR_RW(npem_active_patterns);
 
-static ssize_t supported_patterns_show(struct device *dev,
-				       struct device_attribute *attr, char *buf)
+static ssize_t npem_supported_patterns_show(struct device *dev,
+					    struct device_attribute *attr,
+					    char *buf)
 {
 	struct pci_dev *pdev = to_pci_dev(dev);
 	struct npem_device *npem = pdev->npem;
 
 	return sysfs_emit(buf, "%08x\n", npem->supported_patterns);
 }
-static DEVICE_ATTR_RO(supported_patterns);
+static DEVICE_ATTR_RO(npem_supported_patterns);
 
 static struct attribute *npem_stats_attrs[] __ro_after_init = {
-	&dev_attr_active_patterns.attr,
-	&dev_attr_supported_patterns.attr,
+	&dev_attr_npem_active_patterns.attr,
+	&dev_attr_npem_supported_patterns.attr,
 	NULL
 };
 

@@ -2276,6 +2276,7 @@ static void pci_release_capabilities(struct pci_dev *dev)
 	pci_rcec_exit(dev);
 	pci_iov_release(dev);
 	pci_free_cap_save_buffers(dev);
+	pcie_npem_destroy(dev);
 }
 
 /**
