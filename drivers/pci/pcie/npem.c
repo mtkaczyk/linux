@@ -19,7 +19,7 @@
 #include <linux/sysfs.h>
 #include <linux/types.h>
 
-#include "../pci.h"
+#include "pci.h"
 
 /* NPEM Registers */
 #define PCI_NPEM_CAP		0x04
