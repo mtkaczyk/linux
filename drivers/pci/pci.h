@@ -324,7 +324,6 @@ static inline void pci_doe_disconnected(struct pci_dev *pdev) { }
 #ifdef CONFIG_PCI_NPEM
 void pcie_npem_init(struct pci_dev *dev);
 void pcie_npem_destroy(struct pci_dev *dev);
-extern const struct attribute_group npem_attr_group;
 #else
 static inline void pcie_npem_init(struct pci_dev *dev) { }
 static inline void pcie_npem_destroy(struct pci_dev *dev) { }
