@@ -471,7 +471,6 @@ int led_classdev_register_ext(struct device *parent,
 	led_cdev->dev = device_create_with_groups(leds_class, parent, 0,
 				led_cdev, led_cdev->groups, "%s", final_name);
 	if (IS_ERR(led_cdev->dev)) {
-		dev_err(parent, "Cannot register LED device %s\n", final_name);
 		mutex_unlock(&led_cdev->led_access);
 		return PTR_ERR(led_cdev->dev);
 	}
