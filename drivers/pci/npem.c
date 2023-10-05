@@ -139,7 +139,7 @@ out:
 	mutex_unlock(&npem->npem_lock);
 }
 
-void pcie_npem_destroy(struct pci_dev *dev)
+void pci_npem_destroy(struct pci_dev *dev)
 {
 	if(!dev->npem)
 		return;
@@ -148,7 +148,7 @@ void pcie_npem_destroy(struct pci_dev *dev)
 	kfree(dev->npem);
 }
 
-void pcie_npem_init(struct pci_dev *dev)
+void pci_npem_init(struct pci_dev *dev)
 {
 	struct npem_device *npem;
 	int pos, ret;
@@ -170,6 +170,7 @@ void pcie_npem_init(struct pci_dev *dev)
 	npem->npem_normal.brightness_set = npem_normal_led_set,
 	npem->npem_normal.brightness_get = npem_normal_led_get,
 	npem->npem_normal.max_brightness = LED_ON;
+	npem->npem_normal.default_trigger = "none";
 
 	npem->pos = pos;
 	npem->supported_patterns = cap & ~(NPEM_ENABLED | NPEM_RESET);

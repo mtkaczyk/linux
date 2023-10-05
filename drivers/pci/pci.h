@@ -322,11 +322,11 @@ static inline void pci_doe_disconnected(struct pci_dev *pdev) { }
 #endif
 
 #ifdef CONFIG_PCI_NPEM
-void pcie_npem_init(struct pci_dev *dev);
-void pcie_npem_destroy(struct pci_dev *dev);
+void pci_npem_init(struct pci_dev *dev);
+void pci_npem_destroy(struct pci_dev *dev);
 #else
-static inline void pcie_npem_init(struct pci_dev *dev) { }
-static inline void pcie_npem_destroy(struct pci_dev *dev) { }
+static inline void pci_npem_init(struct pci_dev *dev) { }
+static inline void pci_npem_destroy(struct pci_dev *dev) { }
 #endif
 
 /**
