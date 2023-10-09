@@ -33,12 +33,79 @@
 /* NPEM Command completed */
 #define	NPEM_CC		BIT(0)
 
+/**
+ * enum npem_patterns - Supported patterns list.
+ * @NPEM_NORMAL:	Drive is functioning normally.
+ * @NPEM_LOCATE:	Identify the drive.
+ * @NPEM_FAILURE:	Drive in this slot is failed.
+ * @NPEM_REBUILD:	Drive in slot is under rebuild is a part
+ *			of array and is under rebuild.
+ * @NPEM_PRDFAIL:	Predicted Failure Analysis. The drive in this
+ *			slot is predicted to fail soon.
+ * @NPEM_HOTSPARE:	This slot has a drive that is marked to be
+ *			automatically rebuilt and used as replacement
+ *			for failed drive.
+ * @NPEM_ICA:		The array in which this slot is part of is
+ *			degraded.
+ * @NPEM_IFA:		The array in which this slot is part of is
+ *			failed.
+ * @NPEM_IDT:		Invalid Device type State.
+ * @NPEM_DISABLED:	Disabled state.
+ * @NPEM_SPEC<0-7>:	Enclosure specific patterns.
+ *
+ * Patterns list based on  NPEM (PCIe r6.0.1-1.0 sec6.28). Enclosure may not
+ * support all patterns and particular patterns may not be mutally exclusive.
+ * The interpretation of the pattern depends on hardware.
+ */
+enum npem_patterns {
+	NPEM_NORMAL = 0,
+	NPEM_LOCATE,
+	NPEM_FAILURE,
+	NPEM_REBUILD,
+	NPEM_PRDFAIL,
+	NPEM_HOTSPARE,
+	NPEM_ICA,
+	NPEM_IFA,
+	NPEM_IDT,
+	NPEM_DISABLED,
+	NPEM_SPEC_0,
+	NPEM_SPEC_2,
+	NPEM_SPEC_1,
+	NPEM_SPEC_3,
+	NPEM_SPEC_4,
+	NPEM_SPEC_5,
+	NPEM_SPEC_6,
+	NPEM_SPEC_7,
+	NPEM_CNT
+};
+
+static const u32 to_npem[] = {
+	[NPEM_NORMAL]	= BIT(2),
+	[NPEM_LOCATE]	= BIT(3),
+	[NPEM_FAILURE]	= BIT(4),
+	[NPEM_REBUILD]	= BIT(5),
+	[NPEM_PRDFAIL]	= BIT(5),
+	[NPEM_HOTSPARE]	= BIT(7),
+	[NPEM_ICA]	= BIT(8),
+	[NPEM_IFA]	= BIT(9),
+	[NPEM_IDT]	= BIT(9),
+	[NPEM_DISABLED]	= BIT(9),
+	[NPEM_SPEC_0]	= BIT(24),
+	[NPEM_SPEC_1]	= BIT(25),
+	[NPEM_SPEC_2]	= BIT(26),
+	[NPEM_SPEC_3]	= BIT(27),
+	[NPEM_SPEC_4]	= BIT(28),
+	[NPEM_SPEC_5]	= BIT(29),
+	[NPEM_SPEC_6]	= BIT(30),
+	[NPEM_SPEC_7]	= BIT(31)
+};
+
 struct npem_device {
 	struct pci_dev *dev;
 	struct mutex npem_lock;
 	u32 supported_patterns;
 	u16 pos;
-	struct led_classdev npem_normal;
+	struct led_classdev leds[NPEM_CNT];
 
 };
 
@@ -101,9 +168,10 @@ static int npem_get_active_patterns(struct npem_device *npem, u32 *output)
 	return 0;
 }
 
-enum led_brightness npem_normal_led_get(struct led_classdev *led_npem)
+static enum led_brightness
+npem_get(struct led_classdev *led_npem, enum npem_patterns pattern)
 {
-	struct npem_device *npem = container_of(led_npem, struct npem_device, npem_normal);
+	struct npem_device *npem = container_of(led_npem, struct npem_device, leds[pattern]);
 	int ret, val;
 
 	ret = mutex_lock_interruptible(&npem->npem_lock);
@@ -116,15 +184,12 @@ enum led_brightness npem_normal_led_get(struct led_classdev *led_npem)
 	return val;
 }
 
-void npem_normal_led_set(struct led_classdev *led_npem,
-			 enum led_brightness brightness)
+void npem_set(struct led_classdev *led_npem, enum led_brightness brightness,
+	      enum npem_patterns pattern)
 {
-	struct npem_device *npem = container_of(led_npem, struct npem_device, npem_normal);
+	struct npem_device *npem = container_of(led_npem, struct npem_device, leds[pattern]);
 	int ret;
 	u32 patterns;
-
-	if (brightness != LED_OFF && brightness != LED_ON)
-		return;
 
 	ret = mutex_lock_interruptible(&npem->npem_lock);
 	if (ret)
@@ -134,9 +199,41 @@ void npem_normal_led_set(struct led_classdev *led_npem,
 	if (ret)
 		goto out;
 
-	npem_set_active_patterns(npem, patterns & 2);
+	/* Temporaily only On supported */
+	npem_set_active_patterns(npem, patterns | to_npem[pattern]);
+	led_npem->brightness = brightness;
 out:
 	mutex_unlock(&npem->npem_lock);
+}
+
+enum led_brightness
+npem_get_normal(struct led_classdev *led_npem)
+{
+	return npem_get(led_npem, NPEM_NORMAL);
+}
+
+void npem_set_normal(struct led_classdev *led_npem, enum led_brightness brightness)
+{
+	npem_set(led_npem, brightness, NPEM_NORMAL);
+}
+
+int npem_led_init(struct pci_dev *dev, struct led_classdev *led, enum npem_patterns pattern)
+{
+	int ret;
+
+	led->name = "npem:normal";
+	led->brightness_set = npem_set_normal;
+	led->brightness_get = npem_get_normal;
+	led->max_brightness = LED_ON;
+	led->default_trigger = "none";
+
+	ret = led_classdev_register(&dev->dev, led);
+	if (ret) {
+		dev_err(&dev->dev, "Failed to register NPEM device\n");
+		return -1;
+	}
+
+	return 0;
 }
 
 void pci_npem_destroy(struct pci_dev *dev)
@@ -144,7 +241,7 @@ void pci_npem_destroy(struct pci_dev *dev)
 	if(!dev->npem)
 		return;
 
-	led_classdev_unregister(&dev->npem->npem_normal);
+	led_classdev_unregister(&dev->npem->leds[NPEM_NORMAL]);
 	kfree(dev->npem);
 }
 
@@ -166,23 +263,19 @@ void pci_npem_init(struct pci_dev *dev)
 	if (!npem)
 		return;
 
-	npem->npem_normal.name = "npem:normal";
-	npem->npem_normal.brightness_set = npem_normal_led_set,
-	npem->npem_normal.brightness_get = npem_normal_led_get,
-	npem->npem_normal.max_brightness = LED_ON;
-	npem->npem_normal.default_trigger = "none";
+	npem->supported_patterns = cap & ~(NPEM_ENABLED | NPEM_RESET);
+
+	ret = npem_led_init(dev, &npem->leds[NPEM_NORMAL], NPEM_NORMAL);
+	if (ret) {
+		kfree(dev->npem);
+		return;
+	}
+
+	mutex_init(&npem->npem_lock);
 
 	npem->pos = pos;
-	npem->supported_patterns = cap & ~(NPEM_ENABLED | NPEM_RESET);
 	npem->dev = dev;
 	dev->npem = npem;
 
-	dev_info(&dev->dev, "Registering NPEM LED device\n");
-	ret = led_classdev_register(&dev->dev, &dev->npem->npem_normal);
-	if (ret) {
-		dev_err(&dev->dev, "Failed to register NPEM device\n");
-		kfree(npem);
-		return;
-	}
-	mutex_init(&npem->npem_lock);
+
 }
