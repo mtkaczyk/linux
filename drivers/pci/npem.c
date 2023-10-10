@@ -79,56 +79,90 @@ enum npem_patterns {
 	NPEM_CNT /* Must be last */
 };
 
-static const u32 to_npem[] = {
-	[NPEM_NORMAL]	= BIT(2),
-	[NPEM_LOCATE]	= BIT(3),
-	[NPEM_FAILURE]	= BIT(4),
-	[NPEM_REBUILD]	= BIT(5),
-	[NPEM_PRDFAIL]	= BIT(5),
-	[NPEM_HOTSPARE]	= BIT(7),
-	[NPEM_ICA]	= BIT(8),
-	[NPEM_IFA]	= BIT(9),
-	[NPEM_IDT]	= BIT(9),
-	[NPEM_DISABLED]	= BIT(9),
-	[NPEM_SPEC_0]	= BIT(24),
-	[NPEM_SPEC_1]	= BIT(25),
-	[NPEM_SPEC_2]	= BIT(26),
-	[NPEM_SPEC_3]	= BIT(27),
-	[NPEM_SPEC_4]	= BIT(28),
-	[NPEM_SPEC_5]	= BIT(29),
-	[NPEM_SPEC_6]	= BIT(30),
-	[NPEM_SPEC_7]	= BIT(31)
-};
-
-static const char const * npem_to_string[] = {
-	[NPEM_NORMAL]	= "normal",
-	[NPEM_LOCATE]	= "locate",
-	[NPEM_FAILURE]	= "failure",
-	[NPEM_REBUILD]	= "rebuild",
-	[NPEM_PRDFAIL]	= "prdfail",
-	[NPEM_HOTSPARE]	= "hotspare",
-	[NPEM_ICA]	= "ica",
-	[NPEM_IFA]	= "ifa",
-	[NPEM_IDT]	= "itd",
-	[NPEM_DISABLED]	= "disabled",
-	[NPEM_SPEC_0]	= "enclosure_specific_0",
-	[NPEM_SPEC_1]	= "enclosure_specific_1",
-	[NPEM_SPEC_2]	= "enclosure_specific_2",
-	[NPEM_SPEC_3]	= "enclosure_specific_3",
-	[NPEM_SPEC_4]	= "enclosure_specific_4",
-	[NPEM_SPEC_5]	= "enclosure_specific_5",
-	[NPEM_SPEC_6]	= "enclosure_specific_6",
-	[NPEM_SPEC_7]	= "enclosure_specific_7"
+struct npem_led_ops {
+	char *name;
+	u32 bit;
+	enum led_brightness (*_get)(struct led_classdev *led_cdev);
+	void (*_set)(struct led_classdev *led_cdev,
+		     enum led_brightness brightness);
 };
 
 struct npem_device {
 	struct pci_dev *dev;
 	struct mutex npem_lock;
+	u16 pos;
 	u32 supported_patterns;
 	u32 active_patterns;
-	u16 pos;
+	/* To track registration failures */
+	int registered_patterns;
 	struct led_classdev leds[NPEM_CNT];
 
+};
+
+int npem_set(struct led_classdev *led_npem, enum led_brightness brightness,
+	     enum npem_patterns pattern);
+
+static enum led_brightness
+npem_get(struct led_classdev *led_npem, enum npem_patterns pattern);
+
+#define LED_FUNCS(_enum, _name)					\
+static void npem_set_##_name(struct led_classdev *led_npem,	\
+			     enum led_brightness brightness)	\
+{								\
+	npem_set(led_npem, brightness, _enum);			\
+}								\
+static enum led_brightness					\
+npem_get_##_name(struct led_classdev *led_npem)			\
+{								\
+	return npem_get(led_npem, _enum);			\
+}								\
+
+LED_FUNCS(NPEM_NORMAL, normal);
+LED_FUNCS(NPEM_LOCATE, locate);
+LED_FUNCS(NPEM_FAILURE, failure);
+LED_FUNCS(NPEM_REBUILD, rebuild);
+LED_FUNCS(NPEM_PRDFAIL, prdfail);
+LED_FUNCS(NPEM_HOTSPARE, hotspare);
+LED_FUNCS(NPEM_ICA, ica);
+LED_FUNCS(NPEM_IFA, ifa);
+LED_FUNCS(NPEM_IDT, itd);
+LED_FUNCS(NPEM_DISABLED, disabled);
+LED_FUNCS(NPEM_SPEC_0, enclosure_specific_0);
+LED_FUNCS(NPEM_SPEC_1, enclosure_specific_1);
+LED_FUNCS(NPEM_SPEC_2, enclosure_specific_2);
+LED_FUNCS(NPEM_SPEC_3, enclosure_specific_3);
+LED_FUNCS(NPEM_SPEC_4, enclosure_specific_4);
+LED_FUNCS(NPEM_SPEC_5, enclosure_specific_5);
+LED_FUNCS(NPEM_SPEC_6, enclosure_specific_6);
+LED_FUNCS(NPEM_SPEC_7, enclosure_specific_7);
+
+#define NPEM_OP(_enum, _bit, _name)		\
+	[_enum] = {				\
+		.name = "npem:" #_name,		\
+		.bit = _bit,			\
+		._get = npem_get_##_name,	\
+		._set = npem_set_##_name,	\
+	}
+
+static const struct npem_led_ops ops[] = {
+	NPEM_OP(NPEM_NORMAL, BIT(2), normal),
+	NPEM_OP(NPEM_LOCATE, BIT(3), locate),
+	NPEM_OP(NPEM_FAILURE, BIT(4), failure),
+	NPEM_OP(NPEM_REBUILD, BIT(5), rebuild),
+	NPEM_OP(NPEM_PRDFAIL, BIT(6), prdfail),
+	NPEM_OP(NPEM_HOTSPARE, BIT(7), hotspare),
+	NPEM_OP(NPEM_ICA, BIT(8), ica),
+	NPEM_OP(NPEM_IFA, BIT(9), ifa),
+	NPEM_OP(NPEM_IDT, BIT(10), itd),
+	NPEM_OP(NPEM_DISABLED, BIT(11), disabled),
+	NPEM_OP(NPEM_SPEC_0, BIT(24), enclosure_specific_0),
+	NPEM_OP(NPEM_SPEC_1, BIT(25), enclosure_specific_1),
+	NPEM_OP(NPEM_SPEC_2, BIT(26), enclosure_specific_2),
+	NPEM_OP(NPEM_SPEC_3, BIT(27), enclosure_specific_3),
+	NPEM_OP(NPEM_SPEC_4, BIT(28), enclosure_specific_4),
+	NPEM_OP(NPEM_SPEC_5, BIT(29), enclosure_specific_5),
+	NPEM_OP(NPEM_SPEC_6, BIT(30), enclosure_specific_6),
+	NPEM_OP(NPEM_SPEC_7, BIT(31), enclosure_specific_7),
 };
 
 static int npem_read_reg(struct npem_device *npem, u16 reg, u32 *val)
@@ -170,10 +204,42 @@ static int npem_set_active_patterns(struct npem_device *npem, u32 val)
 	 * at a reduced rate; for example at 10 ms intervals.
 	 */
 	ret = read_poll_timeout(npem_read_reg, ret_val,
-				ret_val || (cc_status & NPEM_CC), 15, 1000000,
-				false, npem, PCI_NPEM_STATUS, &cc_status);
+				ret_val || (cc_status & NPEM_CC), 15,
+				USEC_PER_SEC, false, npem, PCI_NPEM_STATUS,
+				&cc_status);
 
 	return ret ?: ret_val;
+}
+
+int npem_set(struct led_classdev *led_npem, enum led_brightness brightness,
+	      enum npem_patterns pattern)
+{
+	struct npem_device *npem = container_of(led_npem, struct npem_device,
+						leds[pattern]);
+	const struct npem_led_ops *op = &ops[pattern];
+	int ret;
+	u32 patterns;
+
+	ret = mutex_lock_interruptible(&npem->npem_lock);
+	if (ret)
+		return ret;
+
+	if (brightness == LED_OFF)
+		patterns = npem->active_patterns & ~(op->bit);
+	else
+		patterns = npem->active_patterns | op->bit;
+
+	ret = npem_set_active_patterns(npem, patterns);
+	if (!ret)
+		/*
+		 * Read register after write to keep cache in-sync. Controller
+		 * may modify active bits, e.g. some patterns could be mutally
+		 * exclusive.
+		 */
+		npem_read_reg(npem, PCI_NPEM_CTRL, &npem->active_patterns);
+
+	mutex_unlock(&npem->npem_lock);
+	return ret;
 }
 
 static enum led_brightness
@@ -181,13 +247,14 @@ npem_get(struct led_classdev *led_npem, enum npem_patterns pattern)
 {
 	struct npem_device *npem = container_of(led_npem, struct npem_device,
 						leds[pattern]);
+	const struct npem_led_ops *op = &ops[pattern];
 	int ret, val = 0;
 
 	ret = mutex_lock_interruptible(&npem->npem_lock);
 	if (ret)
 		return ret;
 
-	if (npem->active_patterns & to_npem[pattern])
+	if (npem->active_patterns & op->bit)
 		val = 1;
 
 	mutex_unlock(&npem->npem_lock);
@@ -195,62 +262,40 @@ npem_get(struct led_classdev *led_npem, enum npem_patterns pattern)
 	return val;
 }
 
-void npem_set(struct led_classdev *led_npem, enum led_brightness brightness,
-	      enum npem_patterns pattern)
+
+int npem_leds_init(struct npem_device *npem)
 {
-	struct npem_device *npem = container_of(led_npem, struct npem_device,
-						leds[pattern]);
+	const struct npem_led_ops *op;
+	struct pci_dev *dev = npem->dev;
+	struct led_classdev *led;
 	int ret;
-	u32 patterns;
+	enum npem_patterns pattern;
 
-	ret = mutex_lock_interruptible(&npem->npem_lock);
-	if (ret)
-		return;
+	/*
+	 * Do not take npem->npem_lock, get_brightness() is called on register.
+	 * We are safe because led->led_access lock is taken.
+	 */
+	lockdep_assert_not_held(&npem->npem_lock);
 
-	if (brightness == LED_OFF)
-		patterns = npem->active_patterns & ~to_npem[pattern];
-	else
-		patterns = npem->active_patterns | to_npem[pattern];
+	for (pattern = NPEM_NORMAL; pattern < NPEM_CNT; pattern++) {
+		led = &npem->leds[pattern];
+		op = &ops[pattern];
 
-	ret = npem_set_active_patterns(npem, patterns);
-	if (!ret)
-		/*
-		 * Read register after write to keep cache in-sync. Controller
-		 * may modify bits and a result could differ, e.g. some patterns
-		 * could be mutally exclusive.
-		 */
-		npem_read_reg(npem, PCI_NPEM_CTRL, &npem->active_patterns);
 
-	mutex_unlock(&npem->npem_lock);
-}
+		led->name = op->name;
+		led->brightness_set = op->_set;
+		led->brightness_get = op->_get;
+		led->max_brightness = LED_ON;
+		led->default_trigger = "none";
+		led->flags = 0;
 
-enum led_brightness
-npem_get_normal(struct led_classdev *led_npem)
-{
-	return npem_get(led_npem, NPEM_NORMAL);
-}
-
-void npem_set_normal(struct led_classdev *led_npem, enum led_brightness brightness)
-{
-	npem_set(led_npem, brightness, NPEM_NORMAL);
-}
-
-int npem_led_init(struct pci_dev *dev, struct led_classdev *led,
-		  enum npem_patterns pattern)
-{
-	int ret;
-
-	led->name = "npem:normal";
-	led->brightness_set = npem_set_normal;
-	led->brightness_get = npem_get_normal;
-	led->max_brightness = LED_ON;
-	led->default_trigger = "none";
-
-	ret = led_classdev_register(&dev->dev, led);
-	if (ret) {
-		dev_err(&dev->dev, "Failed to register NPEM %s LED device\n",
-			npem_to_string[pattern]);
-		return -1;
+		ret = led_classdev_register(&dev->dev, led);
+		if (ret) {
+			dev_err(&dev->dev, "Failed to register NPEM %s LED device: %d, aborting \n",
+				op->name, ret);
+			return ret;
+		}
+		npem->registered_patterns |= op->bit;
 	}
 
 	return 0;
@@ -258,10 +303,22 @@ int npem_led_init(struct pci_dev *dev, struct led_classdev *led,
 
 void pci_npem_destroy(struct pci_dev *dev)
 {
-	if(!dev->npem)
+	struct npem_device *npem = dev->npem;
+	const struct npem_led_ops *op;
+	enum npem_patterns pattern;
+
+	if(!npem)
 		return;
 
-	led_classdev_unregister(&dev->npem->leds[NPEM_NORMAL]);
+	for (pattern = NPEM_NORMAL; pattern < NPEM_CNT; pattern++) {
+		op = &ops[pattern];
+
+		if (npem->registered_patterns & op->bit)
+			led_classdev_unregister(&dev->npem->leds[NPEM_NORMAL]);
+		else
+			break;
+	}
+
 	kfree(dev->npem);
 }
 
@@ -282,21 +339,24 @@ void pci_npem_init(struct pci_dev *dev)
 	npem = kzalloc(sizeof(*npem), GFP_KERNEL);
 	if (!npem)
 		return;
+	mutex_init(&npem->npem_lock);
 
+	npem->dev = dev;
+	npem->pos = pos;
+	npem->registered_patterns = 0;
 	npem->supported_patterns = cap;
-	npem_read_reg(npem, PCI_NPEM_CTRL, &npem->active_patterns);
 
-	ret = npem_led_init(dev, &npem->leds[NPEM_NORMAL], NPEM_NORMAL);
+	ret = npem_read_reg(npem, PCI_NPEM_CTRL, &npem->active_patterns);
 	if (ret) {
 		kfree(dev->npem);
 		return;
 	}
 
-	mutex_init(&npem->npem_lock);
+	ret = npem_leds_init(npem);
+	if (ret) {
+		pci_npem_destroy(dev);
+		return;
+	}
 
-	npem->pos = pos;
-	npem->dev = dev;
 	dev->npem = npem;
-
-
 }
