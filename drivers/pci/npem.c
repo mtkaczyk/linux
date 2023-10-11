@@ -19,6 +19,7 @@
 #include <linux/pci_regs.h>
 #include <linux/sysfs.h>
 #include <linux/types.h>
+#include <linux/uleds.h>
 
 #include "pci.h"
 
@@ -270,10 +271,11 @@ int npem_leds_init(struct npem_device *npem)
 	struct led_classdev *led;
 	int ret;
 	enum npem_patterns pattern;
+	char *name;
 
 	/*
-	 * Do not take npem->npem_lock, get_brightness() is called on register.
-	 * We are safe because led->led_access lock is taken.
+	 * Do not take npem->npem_lock, get_brightness() is called on
+	 * registration path.
 	 */
 	lockdep_assert_not_held(&npem->npem_lock);
 
@@ -281,13 +283,26 @@ int npem_leds_init(struct npem_device *npem)
 		led = &npem->leds[pattern];
 		op = &ops[pattern];
 
+		name = kzalloc(LED_MAX_NAME_SIZE, GFP_KERNEL);
+		if (!name) {
+			led->name = NULL;
+			return -ENOMEM;
+		}
 
-		led->name = op->name;
+		ret = snprintf(name, LED_MAX_NAME_SIZE, "%d:%s", dev->devfn,
+			       op->name);
+		if (ret < 0)
+			return ret;
+
+		led->name = name;
 		led->brightness_set = op->_set;
 		led->brightness_get = op->_get;
 		led->max_brightness = LED_ON;
 		led->default_trigger = "none";
 		led->flags = 0;
+
+		if ((npem->supported_patterns & op->bit) == 0)
+			led->flags |= LED_SYSFS_DISABLE;
 
 		ret = led_classdev_register(&dev->dev, led);
 		if (ret) {
@@ -305,6 +320,7 @@ void pci_npem_destroy(struct pci_dev *dev)
 {
 	struct npem_device *npem = dev->npem;
 	const struct npem_led_ops *op;
+	struct led_classdev *led;
 	enum npem_patterns pattern;
 
 	if(!npem)
@@ -312,11 +328,12 @@ void pci_npem_destroy(struct pci_dev *dev)
 
 	for (pattern = NPEM_NORMAL; pattern < NPEM_CNT; pattern++) {
 		op = &ops[pattern];
+		led = &npem->leds[pattern];
 
 		if (npem->registered_patterns & op->bit)
 			led_classdev_unregister(&dev->npem->leds[NPEM_NORMAL]);
-		else
-			break;
+		if(led->name)
+			kfree(led->name);
 	}
 
 	kfree(dev->npem);
