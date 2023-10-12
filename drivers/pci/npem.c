@@ -84,8 +84,8 @@ struct npem_led_ops {
 	char *name;
 	u32 bit;
 	enum led_brightness (*_get)(struct led_classdev *led_cdev);
-	void (*_set)(struct led_classdev *led_cdev,
-		     enum led_brightness brightness);
+	int (*_set)(struct led_classdev *led_cdev,
+		    enum led_brightness brightness);
 };
 
 struct npem_device {
@@ -100,17 +100,18 @@ struct npem_device {
 
 };
 
-int npem_set(struct led_classdev *led_npem, enum led_brightness brightness,
-	     enum npem_patterns pattern);
+static int
+npem_set(struct led_classdev *led_npem, enum led_brightness brightness,
+	 enum npem_patterns pattern);
 
 static enum led_brightness
 npem_get(struct led_classdev *led_npem, enum npem_patterns pattern);
 
 #define LED_FUNCS(_enum, _name)					\
-static void npem_set_##_name(struct led_classdev *led_npem,	\
+static int npem_set_##_name(struct led_classdev *led_npem,	\
 			     enum led_brightness brightness)	\
 {								\
-	npem_set(led_npem, brightness, _enum);			\
+	return npem_set(led_npem, brightness, _enum);		\
 }								\
 static enum led_brightness					\
 npem_get_##_name(struct led_classdev *led_npem)			\
@@ -295,7 +296,7 @@ int npem_leds_init(struct npem_device *npem)
 			return ret;
 
 		led->name = name;
-		led->brightness_set = op->_set;
+		led->brightness_set_blocking = op->_set;
 		led->brightness_get = op->_get;
 		led->max_brightness = LED_ON;
 		led->default_trigger = "none";
