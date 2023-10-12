@@ -126,7 +126,7 @@ LED_FUNCS(NPEM_PRDFAIL, prdfail);
 LED_FUNCS(NPEM_HOTSPARE, hotspare);
 LED_FUNCS(NPEM_ICA, ica);
 LED_FUNCS(NPEM_IFA, ifa);
-LED_FUNCS(NPEM_IDT, itd);
+LED_FUNCS(NPEM_IDT, idt);
 LED_FUNCS(NPEM_DISABLED, disabled);
 LED_FUNCS(NPEM_SPEC_0, enclosure_specific_0);
 LED_FUNCS(NPEM_SPEC_1, enclosure_specific_1);
@@ -154,7 +154,7 @@ static const struct npem_led_ops ops[] = {
 	NPEM_OP(NPEM_HOTSPARE, BIT(7), hotspare),
 	NPEM_OP(NPEM_ICA, BIT(8), ica),
 	NPEM_OP(NPEM_IFA, BIT(9), ifa),
-	NPEM_OP(NPEM_IDT, BIT(10), itd),
+	NPEM_OP(NPEM_IDT, BIT(10), idt),
 	NPEM_OP(NPEM_DISABLED, BIT(11), disabled),
 	NPEM_OP(NPEM_SPEC_0, BIT(24), enclosure_specific_0),
 	NPEM_OP(NPEM_SPEC_1, BIT(25), enclosure_specific_1),
