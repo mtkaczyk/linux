@@ -226,7 +226,7 @@ int npem_set(struct led_classdev *led_npem, enum led_brightness brightness,
 		patterns = npem->active_patterns | op->bit;
 
 	ret = npem_set_active_patterns(npem, patterns);
-	if (!ret)
+	if (ret == 0)
 		/*
 		 * Read register after write to keep cache in-sync. Controller
 		 * may modify active bits, e.g. some patterns could be mutally
@@ -284,7 +284,7 @@ int npem_leds_init(struct npem_device *npem)
 			return -ENOMEM;
 		}
 
-		ret = snprintf(name, LED_MAX_NAME_SIZE, "%d:%s", dev->devfn,
+		ret = snprintf(name, LED_MAX_NAME_SIZE, "%s:%s", pci_name(dev),
 			       op->name);
 		if (ret < 0)
 			return ret;
