@@ -7,6 +7,7 @@
  * Copyright (c) 2023 Intel Corporation
  *	Mariusz Tkaczyk <mariusz.tkaczyk@linux.intel.com>
  */
+#include <linux/acpi.h>
 #include <linux/bits.h>
 #include <linux/delay.h>
 #include <linux/iopoll.h>
@@ -134,7 +135,7 @@ LED_FUNCS(NPEM_SPEC_7, enclosure_specific_7);
 
 #define NPEM_OP(_enum, _bit, _name)		\
 	[_enum] = {				\
-		.name = "npem:" #_name,		\
+		.name = "enclosure:" #_name,	\
 		.bit = _bit,			\
 		._get = npem_get_##_name,	\
 		._set = npem_set_##_name,	\
@@ -258,6 +259,27 @@ npem_get(struct led_classdev *led_npem, enum npem_patterns pattern)
 	return val;
 }
 
+#define DSM_GUID GUID_INIT(0x5d524d9d, 0xfff9, 0x4d4b,  0x8c, 0xb7, 0x74, 0x7e,\
+			   0xd5, 0x1e, 0x19, 0x4d)
+#define GET_SUPPORTED_STATES_DSM	BIT(1)
+#define GET_STATE_DSM			BIT(2)
+#define SET_STATE_DSM			BIT(3)
+
+
+static bool has_dsm(struct pci_dev *pdev)
+{
+	acpi_handle handle;
+	static const guid_t dsm_guid = DSM_GUID;
+
+	handle = ACPI_HANDLE(&pdev->dev);
+	if (!handle)
+		return false;
+
+	if (acpi_check_dsm(handle, &dsm_guid, 0x1, GET_SUPPORTED_STATES_DSM |
+			GET_STATE_DSM | SET_STATE_DSM) == true)
+		return true;
+	return false;
+}
 
 int npem_leds_init(struct npem_device *npem)
 {
@@ -346,6 +368,9 @@ void pci_npem_init(struct pci_dev *dev)
 
 	if (pci_read_config_dword(dev, pos + PCI_NPEM_CAP, &cap) != 0 ||
 	    (cap & NPEM_ENABLED) == 0)
+		return;
+	/* Do not register NPEM led device if _DSM method is available */
+	if (has_dsm(dev))
 		return;
 
 	npem = kzalloc(sizeof(*npem), GFP_KERNEL);
