@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: GPL-2.0
 /*
  * Native PCIe Enclosure Management
- *	PCIe Base Specification r6.1-1.0 sec 6.28
- *	PCIe Base Specification r6.1-1.0 sec 7.9.19
+ *	PCIe Base Specification r6.1 sec 6.28
+ *	PCIe Base Specification r6.1 sec 7.9.19
  *
  * Copyright (c) 2023 Intel Corporation
  *	Mariusz Tkaczyk <mariusz.tkaczyk@linux.intel.com>
@@ -10,7 +10,6 @@
 #include <linux/bits.h>
 #include <linux/delay.h>
 #include <linux/iopoll.h>
-#include <linux/jiffies.h>
 #include <linux/leds.h>
 #include <linux/errno.h>
 #include <linux/kstrtox.h>
@@ -22,11 +21,6 @@
 #include <linux/uleds.h>
 
 #include "pci.h"
-
-/* NPEM Registers */
-#define PCI_NPEM_CAP		0x04
-#define PCI_NPEM_CTRL		0x08
-#define PCI_NPEM_STATUS		0x0c
 
 /* Special NPEM bits. */
 #define	NPEM_ENABLED	BIT(0)

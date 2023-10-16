@@ -1135,3 +1135,8 @@
 #define PCI_DOE_DATA_OBJECT_DISC_RSP_3_NEXT_INDEX	0xff000000
 
 #endif /* LINUX_PCI_REGS_H */
+
+/* Native PCIe Enclosure Management */
+#define PCI_NPEM_CAP		0x04
+#define PCI_NPEM_CTRL		0x08
+#define PCI_NPEM_STATUS		0x0c
