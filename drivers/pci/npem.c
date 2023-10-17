@@ -135,7 +135,7 @@ LED_FUNCS(NPEM_SPEC_7, specific_7);
 
 #define NPEM_OP(_enum, _bit, _name)		\
 	[_enum] = {				\
-		.name = "enclosure:" #_name,	\
+		.name = _name,			\
 		.bit = _bit,			\
 		._get = npem_get_##_name,	\
 		._set = npem_set_##_name,	\
@@ -302,7 +302,7 @@ int npem_leds_init(struct npem_device *npem)
 			return -ENOMEM;
 		}
 
-		ret = snprintf(name, LED_MAX_NAME_SIZE, "%s:%s", pci_name(dev),
+		ret = snprintf(name, LED_MAX_NAME_SIZE, "%s:enclosure:%s", pci_name(dev),
 			       op->name);
 		if (ret < 0)
 			return ret;
