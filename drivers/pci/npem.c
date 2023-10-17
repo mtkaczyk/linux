@@ -307,7 +307,6 @@ int npem_leds_init(struct npem_device *npem)
 		if (ret < 0)
 			return ret;
 
-		led->name = name;
 		led->brightness_set_blocking = op->_set;
 		led->brightness_get = op->_get;
 		led->max_brightness = LED_ON;
@@ -319,7 +318,7 @@ int npem_leds_init(struct npem_device *npem)
 
 		ret = led_classdev_register(&dev->dev, led);
 		if (ret) {
-			dev_err(&dev->dev, "Failed to register NPEM %s LED device: %d, aborting \n",
+			dev_err(&dev->dev, "Failed to register NPEM %s LED device: %d, aborting.\n",
 				op->name, ret);
 			return ret;
 		}
@@ -336,7 +335,7 @@ void pci_npem_remove(struct pci_dev *dev)
 	struct led_classdev *led;
 	enum npem_patterns pattern;
 
-	if(!npem)
+	if (!npem)
 		return;
 
 	for (pattern = NPEM_NORMAL; pattern < NPEM_CNT; pattern++) {
@@ -345,8 +344,7 @@ void pci_npem_remove(struct pci_dev *dev)
 
 		if (npem->registered_patterns & op->bit)
 			led_classdev_unregister(&dev->npem->leds[NPEM_NORMAL]);
-		if(led->name)
-			kfree(led->name);
+		kfree(led->name);
 	}
 
 	kfree(dev->npem);
