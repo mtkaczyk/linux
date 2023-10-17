@@ -191,14 +191,10 @@ static int npem_set_active_patterns(struct npem_device *npem, u32 val)
 		return ret;
 
 	/*
-	 * If the status bit is not set within 1 second limit on command
-	 * execution, software is permitted to repeat the NPEM command or issue
-	 * the next NPEM command.
-	 *
-	 * For the case where an NPEM command has not completed when software
-	 * polls the bit, it is recommended that software not continuously
-	 * “spin” on polling the bit, but rather poll under interrupt
-	 * at a reduced rate; for example at 10 ms intervals.
+	 * For the case where an NPEM command has not completed immediately,
+	 * it is recommended that software not continuously “spin” on polling
+	 * the status register, but rather poll under interrupt at a reduced
+	 * rate; for example at 10 ms intervals.
 	 */
 	ret = read_poll_timeout(npem_read_reg, ret_val,
 				ret_val || (cc_status & NPEM_CC), 15,
