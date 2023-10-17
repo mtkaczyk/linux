@@ -302,8 +302,8 @@ int npem_leds_init(struct npem_device *npem)
 			return -ENOMEM;
 		}
 
-		ret = snprintf(name, LED_MAX_NAME_SIZE, "%s:enclosure:%s", pci_name(dev),
-			       op->name);
+		ret = snprintf(name, LED_MAX_NAME_SIZE, "%s:enclosure:%s",
+			       pci_name(dev), op->name);
 		if (ret < 0)
 			return ret;
 
