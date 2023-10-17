@@ -333,7 +333,7 @@ int npem_leds_init(struct npem_device *npem)
 	return 0;
 }
 
-void pci_npem_destroy(struct pci_dev *dev)
+void pci_npem_remove(struct pci_dev *dev)
 {
 	struct npem_device *npem = dev->npem;
 	const struct npem_led_ops *op;
@@ -356,7 +356,7 @@ void pci_npem_destroy(struct pci_dev *dev)
 	kfree(dev->npem);
 }
 
-void pci_npem_init(struct pci_dev *dev)
+void pci_npem_create(struct pci_dev *dev)
 {
 	struct npem_device *npem;
 	int pos, ret;
@@ -369,6 +369,7 @@ void pci_npem_init(struct pci_dev *dev)
 	if (pci_read_config_dword(dev, pos + PCI_NPEM_CAP, &cap) != 0 ||
 	    (cap & NPEM_ENABLED) == 0)
 		return;
+
 	/* Do not register NPEM led device if _DSM method is available */
 	if (has_dsm(dev))
 		return;
@@ -391,7 +392,7 @@ void pci_npem_init(struct pci_dev *dev)
 
 	ret = npem_leds_init(npem);
 	if (ret) {
-		pci_npem_destroy(dev);
+		pci_npem_remove(dev);
 		return;
 	}
 

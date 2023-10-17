@@ -350,7 +350,7 @@ void pci_bus_add_device(struct pci_dev *dev)
 		pci_warn(dev, "device attach failed (%d)\n", retval);
 
 	pci_dev_assign_added(dev, true);
-	pci_npem_init(dev);
+	pci_npem_create(dev);
 }
 EXPORT_SYMBOL_GPL(pci_bus_add_device);
 
