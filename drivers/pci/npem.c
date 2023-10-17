@@ -135,7 +135,7 @@ LED_FUNCS(NPEM_SPEC_7, specific_7);
 
 #define NPEM_OP(_enum, _bit, _name)		\
 	[_enum] = {				\
-		.name = _name,			\
+		.name = #_name,			\
 		.bit = _bit,			\
 		._get = npem_get_##_name,	\
 		._set = npem_set_##_name,	\
