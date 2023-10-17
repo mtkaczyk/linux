@@ -124,14 +124,14 @@ LED_FUNCS(NPEM_ICA, ica);
 LED_FUNCS(NPEM_IFA, ifa);
 LED_FUNCS(NPEM_IDT, idt);
 LED_FUNCS(NPEM_DISABLED, disabled);
-LED_FUNCS(NPEM_SPEC_0, enclosure_specific_0);
-LED_FUNCS(NPEM_SPEC_1, enclosure_specific_1);
-LED_FUNCS(NPEM_SPEC_2, enclosure_specific_2);
-LED_FUNCS(NPEM_SPEC_3, enclosure_specific_3);
-LED_FUNCS(NPEM_SPEC_4, enclosure_specific_4);
-LED_FUNCS(NPEM_SPEC_5, enclosure_specific_5);
-LED_FUNCS(NPEM_SPEC_6, enclosure_specific_6);
-LED_FUNCS(NPEM_SPEC_7, enclosure_specific_7);
+LED_FUNCS(NPEM_SPEC_0, specific_0);
+LED_FUNCS(NPEM_SPEC_1, specific_1);
+LED_FUNCS(NPEM_SPEC_2, specific_2);
+LED_FUNCS(NPEM_SPEC_3, specific_3);
+LED_FUNCS(NPEM_SPEC_4, specific_4);
+LED_FUNCS(NPEM_SPEC_5, specific_5);
+LED_FUNCS(NPEM_SPEC_6, specific_6);
+LED_FUNCS(NPEM_SPEC_7, specific_7);
 
 #define NPEM_OP(_enum, _bit, _name)		\
 	[_enum] = {				\
@@ -152,14 +152,14 @@ static const struct npem_led_ops ops[] = {
 	NPEM_OP(NPEM_IFA, BIT(9), ifa),
 	NPEM_OP(NPEM_IDT, BIT(10), idt),
 	NPEM_OP(NPEM_DISABLED, BIT(11), disabled),
-	NPEM_OP(NPEM_SPEC_0, BIT(24), enclosure_specific_0),
-	NPEM_OP(NPEM_SPEC_1, BIT(25), enclosure_specific_1),
-	NPEM_OP(NPEM_SPEC_2, BIT(26), enclosure_specific_2),
-	NPEM_OP(NPEM_SPEC_3, BIT(27), enclosure_specific_3),
-	NPEM_OP(NPEM_SPEC_4, BIT(28), enclosure_specific_4),
-	NPEM_OP(NPEM_SPEC_5, BIT(29), enclosure_specific_5),
-	NPEM_OP(NPEM_SPEC_6, BIT(30), enclosure_specific_6),
-	NPEM_OP(NPEM_SPEC_7, BIT(31), enclosure_specific_7),
+	NPEM_OP(NPEM_SPEC_0, BIT(24), specific_0),
+	NPEM_OP(NPEM_SPEC_1, BIT(25), specific_1),
+	NPEM_OP(NPEM_SPEC_2, BIT(26), specific_2),
+	NPEM_OP(NPEM_SPEC_3, BIT(27), specific_3),
+	NPEM_OP(NPEM_SPEC_4, BIT(28), specific_4),
+	NPEM_OP(NPEM_SPEC_5, BIT(29), specific_5),
+	NPEM_OP(NPEM_SPEC_6, BIT(30), specific_6),
+	NPEM_OP(NPEM_SPEC_7, BIT(31), specific_7),
 };
 
 static int npem_read_reg(struct npem_device *npem, u16 reg, u32 *val)
