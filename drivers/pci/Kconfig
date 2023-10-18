@@ -119,6 +119,12 @@ config PCI_ATS
 config PCI_DOE
 	bool
 
+config PCI_NPEM
+	bool "Native PCIe Enclosure Management"
+	help
+	  This option adds support for Native PCIe Enclosure Management.
+	  It allows for manage LED blinking patterns in enclosures.
+
 config PCI_ECAM
 	bool
 
