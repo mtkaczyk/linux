@@ -273,6 +273,7 @@ int npem_leds_init(struct npem_device *npem)
 		if (ret < 0)
 			return ret;
 
+		led->name = name;
 		led->brightness_set_blocking = op->_set;
 		led->brightness_get = op->_get;
 		led->max_brightness = LED_ON;
