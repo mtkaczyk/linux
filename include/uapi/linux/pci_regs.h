@@ -1144,10 +1144,10 @@
 #define	 PCI_NPEM_CTRL_ENABLED		0x01	/* NPEM Enabled */
 
 #define PCI_NPEM_STATUS	0x0c /* NPEM status register */
-#define	 PCI_NPEM_STATUS_CC		0x01 /* NPEM Status Command completed */
+#define	 PCI_NPEM_STATUS_CC		0x01 /* NPEM Command completed */
 /*
- * Native PCIe Enclosure Management patterns and special
- * Corresponding for capability and control registers
+ * Native PCIe Enclosure Management patterns and enclosure specific
+ * corresponding for capability and control registers
  */
 #define  PCI_NPEM_RESET			0x0001 /* NPEM Reset Command */
 #define  PCI_NPEM_OK			0x0004 /* NPEM pattern OK */

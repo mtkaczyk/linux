@@ -313,6 +313,7 @@ void pci_npem_remove(struct pci_dev *dev)
 		kfree(led->name);
 	}
 
+	mutex_destroy(&npem->npem_lock);
 	kfree(dev->npem);
 }
 
