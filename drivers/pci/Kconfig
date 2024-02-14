@@ -138,6 +138,13 @@ config PCI_IOV
 
 	  If unsure, say N.
 
+config PCI_NPEM
+	bool "Native PCIe Enclosure Management"
+	depends on LEDS_CLASS
+	help
+	  Support for Native PCIe Enclosure Management. It allows managing LED
+	  blinking patterns in storage enclosures.
+
 config PCI_PRI
 	bool "PCI PRI support"
 	select PCI_ATS

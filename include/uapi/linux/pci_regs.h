@@ -739,6 +739,7 @@
 #define PCI_EXT_CAP_ID_DVSEC	0x23	/* Designated Vendor-Specific */
 #define PCI_EXT_CAP_ID_DLF	0x25	/* Data Link Feature */
 #define PCI_EXT_CAP_ID_PL_16GT	0x26	/* Physical Layer 16.0 GT/s */
+#define PCI_EXT_CAP_ID_NPEM	0x29	/* Native PCIe Enclosure Management */
 #define PCI_EXT_CAP_ID_PL_32GT  0x2A    /* Physical Layer 32.0 GT/s */
 #define PCI_EXT_CAP_ID_DOE	0x2E	/* Data Object Exchange */
 #define PCI_EXT_CAP_ID_MAX	PCI_EXT_CAP_ID_DOE
@@ -1134,5 +1135,38 @@
 #define PCI_DOE_DATA_OBJECT_DISC_RSP_3_VID		0x0000ffff
 #define PCI_DOE_DATA_OBJECT_DISC_RSP_3_PROTOCOL		0x00ff0000
 #define PCI_DOE_DATA_OBJECT_DISC_RSP_3_NEXT_INDEX	0xff000000
+
+/* Native PCIe Enclosure Management */
+#define PCI_NPEM_CAP	0x04 /* NPEM capability register */
+#define	 PCI_NPEM_CAPABLE		0x01	/* NPEM Capable */
+
+#define PCI_NPEM_CTRL	0x08 /* NPEM control register */
+#define	 PCI_NPEM_CTRL_ENABLED		0x01	/* NPEM Enabled */
+
+#define PCI_NPEM_STATUS	0x0c /* NPEM status register */
+#define	 PCI_NPEM_STATUS_CC		0x01 /* NPEM Command completed */
+/*
+ * Native PCIe Enclosure Management patterns and enclosure specific
+ * bits are corresponding for capability and control registers
+ */
+#define  PCI_NPEM_RESET			0x0001 /* NPEM Reset Command */
+#define  PCI_NPEM_OK			0x0004 /* NPEM pattern OK */
+#define  PCI_NPEM_LOCATE		0x0008 /* NPEM pattern Locate */
+#define  PCI_NPEM_FAIL			0x0010 /* NPEM pattern Fail */
+#define  PCI_NPEM_REBUILD		0x0020 /* NPEM pattern Rebuild */
+#define  PCI_NPEM_PFA			0x0040 /* NPEM pattern Predicted Failure Analysis */
+#define  PCI_NPEM_HOTSPARE		0x0080 /* NPEM pattern Hot Spare */
+#define  PCI_NPEM_ICA			0x0100 /* NPEM pattern In Critical Array */
+#define  PCI_NPEM_IFA			0x0200 /* NPEM pattern In Failed Array */
+#define  PCI_NPEM_IDT			0x0400 /* NPEM pattern Invalid Device Type */
+#define  PCI_NPEM_DISABLED		0x0800 /* NPEM pattern Disabled */
+#define  PCI_NPEM_SPEC_0		0x00800000
+#define  PCI_NPEM_SPEC_1		0x01000000
+#define  PCI_NPEM_SPEC_2		0x02000000
+#define  PCI_NPEM_SPEC_3		0x04000000
+#define  PCI_NPEM_SPEC_4		0x08000000
+#define  PCI_NPEM_SPEC_5		0x10000000
+#define  PCI_NPEM_SPEC_6		0x20000000
+#define  PCI_NPEM_SPEC_7		0x40000000
 
 #endif /* LINUX_PCI_REGS_H */
