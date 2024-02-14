@@ -1,0 +1,22 @@
+What:		/sys/class/leds/<npem>/brightness
+Date:		September 2024
+KernelVersion:	6.11
+Description:
+		NPEM driver LED interface, created for userspace applications, like ledmon.
+
+                NPEM ledclass devices can be recognized by pattern: "<bdf>:enclosure:<indication>",
+		where:
+		- <bdf> - is a address of physical device with NPEM/_DSM support.
+		- ":enclosure:" - const part.
+		- <indication> - is a NPEM indication it represents.
+
+		Brightness file represents state of indication (ON/OFF), not a led state.
+
+		For every NPEM LED device only 2 brightness states are allowed: LED_ON (1) or
+		LED_OFF (0). There is possibility that conflicting indications might be
+		automatically turned off for indications belong to the same hardware device
+                (shares same <bdf>).
+
+		The driver supports NPEM and _DSM PCIe SSD Status LED but the indications are
+		corresponding and the backend is not presented to user. _DSM has higher priority if
+		both available.
