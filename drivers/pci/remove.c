@@ -20,6 +20,7 @@ static void pci_stop_dev(struct pci_dev *dev)
 	if (pci_dev_is_added(dev)) {
 
 		device_release_driver(&dev->dev);
+		pci_npem_remove(dev);
 		pci_proc_detach_device(dev);
 		pci_remove_sysfs_dev_files(dev);
 		of_pci_remove_node(dev);

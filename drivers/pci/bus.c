@@ -345,6 +345,7 @@ void pci_bus_add_device(struct pci_dev *dev)
 	if (pci_is_bridge(dev))
 		of_pci_make_dev_node(dev);
 	pci_create_sysfs_dev_files(dev);
+	pci_npem_create(dev);
 	pci_proc_attach_device(dev);
 	pci_bridge_d3_update(dev);
 
